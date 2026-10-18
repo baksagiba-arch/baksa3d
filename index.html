@@ -707,22 +707,67 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     obj = Object.assign({}, obj); delete obj.id;
     if (db) return db.collection(col).doc(id).set(obj).catch(erroDb);
     cache[col][id] = Object.assign({ id: id }, obj); lsSet(col); renderTudo();
+    if (modoDados === "planilha") enviarPlanilha({ col: col, id: id, op: "gravar", dados: obj });
     return Promise.resolve();
   }
   function apagar(col, id) {
     if (db) return db.collection(col).doc(id).delete().catch(erroDb);
     delete cache[col][id]; lsSet(col); renderTudo();
+    if (modoDados === "planilha") enviarPlanilha({ col: col, id: id, op: "apagar" });
     return Promise.resolve();
   }
+
+  /* ---------- Planilha do Google (versão sem login): todos os aparelhos veem os mesmos dados ---------- */
+  var PLANILHA = "https://script.google.com/macros/s/AKfycbxkGTwqvaB7Z2Zm7jI7CkQSM2i5O37DnLxiPz2m9Ap3uS76usczD4fIh9xkV9B2j9tW/exec";
+  var pendentes = 0;
+  function enviarPlanilha(corpo) {
+    pendentes++;
+    return fetch(PLANILHA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(corpo) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (!j || !j.ok) throw new Error("falhou"); })
+      .catch(function () { toast("Não foi possível salvar na planilha. Verifique a internet."); })
+      .then(function () { pendentes--; });
+  }
+  function puxarPlanilha(primeira) {
+    if (pendentes) return;
+    fetch(PLANILHA + "?cols=" + COLS.join(","), { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok || pendentes) return;
+        COLS.forEach(function (c) {
+          var o = {};
+          (j.dados[c] || []).forEach(function (x) { o[x.id] = x; });
+          if (primeira && !Object.keys(o).length && Object.keys(cache[c]).length) {
+            Object.keys(cache[c]).forEach(function (id) {
+              var d = Object.assign({}, cache[c][id]); delete d.id;
+              enviarPlanilha({ col: c, id: id, op: "gravar", dados: d });
+            });
+            return;
+          }
+          cache[c] = o; lsSet(c);
+        });
+        renderTudo();
+      })
+      .catch(function () { if (primeira) toast("Sem conexão com a planilha. Mostrando os dados deste aparelho."); });
+  }
+  function usarPlanilha() {
+    modoDados = "planilha";
+    COLS.forEach(function (c) { cache[c] = lsGet(c); });
+    pronto = true; renderTudo();
+    puxarPlanilha(true);
+    setInterval(function () { if (!document.hidden) puxarPlanilha(false); }, 20000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) puxarPlanilha(false); });
+  }
+  function semBancoDoApp() { if (/^https:/.test(PLANILHA)) usarPlanilha(); else usarLocal(); }
   function usarLocal() {
     modoDados = "local";
     COLS.forEach(function (c) { cache[c] = lsGet(c); });
     pronto = true; renderTudo();
   }
   function iniciarDados() {
-    if (!window.claude || typeof window.claude.use !== "function") { usarLocal(); return; }
+    if (!window.claude || typeof window.claude.use !== "function") { semBancoDoApp(); return; }
     window.claude.use("db").then(function (d) {
-      if (!d) { usarLocal(); return; }
+      if (!d) { semBancoDoApp(); return; }
       db = d; modoDados = "db";
       var faltam = COLS.length;
       COLS.forEach(function (c) {
@@ -734,7 +779,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           renderTudo();
         }, function () { toast("A conexão com os dados caiu. Recarregue o app."); });
       });
-    }, usarLocal);
+    }, semBancoDoApp);
   }
 
   /* ---------- Abas ---------- */
