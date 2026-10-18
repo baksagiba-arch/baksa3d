@@ -162,6 +162,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .item .pos { flex: none; min-width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 16px var(--f-display); }
 .sw.inl { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; }
 .acts button.go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.shead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mini { border: 1px solid var(--line); background: transparent; color: var(--accent); border-radius: 999px; padding: 6px 12px; font: 600 13px var(--f-body); cursor: pointer; white-space: nowrap; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); text-align: center; }
 .bar .k { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--bar-muted); }
 .bar .big { font: 700 36px/1.05 var(--f-display); font-variant-numeric: tabular-nums; }
@@ -186,7 +188,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
   <div id="tab-custo" role="tabpanel" aria-labelledby="t-custo" class="panel">
   <section aria-labelledby="h-peca">
-    <h2 id="h-peca">Dados da peça</h2>
+    <div class="shead"><h2 id="h-peca">Dados da peça</h2><button type="button" class="mini" id="limpar">Limpar para nova peça</button></div>
 
     <div class="field">
       <label for="nome">Nome da peça</label>
@@ -332,9 +334,20 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <button type="button" id="p-abertos" aria-pressed="true">Em aberto</button>
       <button type="button" id="p-entregues" aria-pressed="false">Entregues</button>
     </div>
+    <div class="field">
+      <label for="p-ordem">Ordenar por</label>
+      <div class="selwrap"><select id="p-ordem">
+        <option value="chegada">Ordem de chegada</option>
+        <option value="prazo">Prazo de entrega (mais urgente primeiro)</option>
+        <option value="etapa">Etapa (na fila, imprimindo, pronto)</option>
+        <option value="receber">A receber primeiro</option>
+        <option value="valor">Maior valor</option>
+        <option value="cliente">Cliente (A a Z)</option>
+      </select></div>
+    </div>
     <p class="hint center" id="p-resumo"></p>
     <div id="p-lista" class="lista"></div>
-    <p class="hint center">Ordem de chegada: o primeiro da lista é o próximo a produzir.</p>
+    <p class="hint center">O número no círculo é a posição na ordem de chegada.</p>
   </div>
 
   <div id="tab-estoque" role="tabpanel" aria-labelledby="t-estoque" class="panel" hidden>
@@ -957,6 +970,24 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var verEntregues = false;
   $("p-abertos").addEventListener("click", function () { verEntregues = false; renderPedidos(); });
   $("p-entregues").addEventListener("click", function () { verEntregues = true; renderPedidos(); });
+  try { var o = localStorage.getItem("baksa3d.ordem"); if (o) $("p-ordem").value = o; } catch (e) {}
+  $("p-ordem").addEventListener("change", function () {
+    try { localStorage.setItem("baksa3d.ordem", this.value); } catch (e) {}
+    renderPedidos();
+  });
+  $("limpar").addEventListener("click", function () {
+    confirmar("Limpar para nova peça?", "Apaga nome, quantidade, tempo, peso e embalagem. Filamento, margem, desperdício e custos fixos continuam como estão.", [
+      { texto: "Limpar", classe: "primary", acao: function () {
+        $("nome").value = ""; $("qtd").value = "1";
+        $("horas").value = ""; $("minutos").value = ""; $("decimal").value = "";
+        $("peso").value = ""; $("embalagem").value = "";
+        cotAtual = null;
+        calcular(); salvar(); aplicarFil(false);
+        window.scrollTo(0, 0); $("nome").focus();
+        toast("Pronto para uma nova peça.");
+      } }
+    ]);
+  });
   function listaPed() {
     return Object.keys(cache.pedidos).map(function (k) { return cache.pedidos[k]; })
       .sort(function (a, b) { return (a.criado || 0) - (b.criado || 0); });
@@ -979,7 +1010,18 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("p-abertos").setAttribute("aria-pressed", !verEntregues);
     $("p-entregues").setAttribute("aria-pressed", verEntregues);
     var todos = listaPed(), abertos = todos.filter(function (p) { return p.status !== "entregue"; });
-    var lista = verEntregues ? todos.filter(function (p) { return p.status === "entregue"; }).reverse() : abertos;
+    var lista = verEntregues ? todos.filter(function (p) { return p.status === "entregue"; }).reverse() : abertos.slice();
+    var posChegada = {}; abertos.forEach(function (p, i) { posChegada[p.id] = i + 1; });
+    var ordem = $("p-ordem").value;
+    var ETAPA = { fila: 0, produzindo: 1, pronto: 2, entregue: 3 };
+    var cmp = {
+      prazo: function (a, b) { return (a.prazo || "9999") < (b.prazo || "9999") ? -1 : (a.prazo || "9999") > (b.prazo || "9999") ? 1 : 0; },
+      etapa: function (a, b) { return (ETAPA[a.status] || 0) - (ETAPA[b.status] || 0); },
+      receber: function (a, b) { return (a.pago ? 1 : 0) - (b.pago ? 1 : 0); },
+      valor: function (a, b) { return (b.valorTotal || 0) - (a.valorTotal || 0); },
+      cliente: function (a, b) { return (a.cliente || "~").localeCompare(b.cliente || "~", "pt-BR"); }
+    }[ordem];
+    if (cmp) lista.sort(function (a, b) { return cmp(a, b) || (a.criado || 0) - (b.criado || 0); });
     var box = $("p-lista"); box.textContent = "";
     var hoje = hojeISO();
     lista.forEach(function (p, i) {
@@ -988,7 +1030,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       var prox = STATUS[idx + 1];
       box.appendChild(el("div", { class: "item" }, [
         el("div", { class: "top" }, [
-          el("span", { class: "pos", text: verEntregues ? "✓" : String(i + 1) + "º" }),
+          el("span", { class: "pos", text: verEntregues ? "✓" : String(posChegada[p.id]) + "º" }),
           el("div", null, [
             el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + (p.filamento ? " · " + p.filamento : "") }),
