@@ -162,6 +162,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .item .pos { flex: none; min-width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 16px var(--f-display); }
 .sw.inl { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; }
 .acts button.go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: 400 15px/1.45 var(--f-body); padding: 10px 12px; resize: vertical; min-height: 80px; }
+textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.resumo { font-size: 13px; color: var(--ink); background: var(--bg); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .shead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .mini { border: 1px solid var(--line); background: transparent; color: var(--accent); border-radius: 999px; padding: 6px 12px; font: 600 13px var(--f-body); cursor: pointer; white-space: nowrap; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); text-align: center; }
@@ -187,6 +190,19 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   </nav>
 
   <div id="tab-custo" role="tabpanel" aria-labelledby="t-custo" class="panel">
+  <section aria-labelledby="h-cli">
+    <h2 id="h-cli">Cliente</h2>
+    <div class="field"><label for="cli-nome">Nome</label><div class="inp"><input id="cli-nome" class="txt" autocomplete="off" placeholder="Nome do cliente"></div></div>
+    <div class="row2">
+      <div class="field"><label for="cli-tel">Telefone</label><div class="inp"><input id="cli-tel" class="txt" type="tel" inputmode="tel" autocomplete="off" placeholder="(11) 3333-3333"></div></div>
+      <div class="field"><label for="cli-whats">WhatsApp</label><div class="inp"><input id="cli-whats" class="txt" type="tel" inputmode="tel" autocomplete="off" placeholder="(11) 99999-9999"></div></div>
+    </div>
+    <button type="button" class="mini" id="cli-mesmo" style="justify-self:start">WhatsApp é o mesmo telefone</button>
+    <div class="field"><label for="cli-email">E-mail</label><div class="inp"><input id="cli-email" class="txt" type="email" inputmode="email" autocomplete="off" placeholder="cliente@email.com"></div></div>
+    <div class="field"><label for="cli-resumo">Resumo da conversa</label>
+      <textarea id="cli-resumo" rows="3" placeholder="Ex.: quer em preto, entrega no sábado, pediu desconto para 10 peças"></textarea></div>
+  </section>
+
   <section aria-labelledby="h-peca">
     <div class="shead"><h2 id="h-peca">Dados da peça</h2><button type="button" class="mini" id="limpar">Limpar para nova peça</button></div>
 
@@ -510,8 +526,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var modo = "hm";
   var ultimo = {};
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
-  var PECA = ["nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem"];
-  var campos = ["nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "potencia", "kwh", "deprec", "margem", "impostos"];
+  var PECA = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem"];
+  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "potencia", "kwh", "deprec", "margem", "impostos"];
 
   function carregar() {
     var s = null;
@@ -630,7 +646,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("abrir-demo").addEventListener("click", function () {
     if (typeof salvarCotacao === "function") salvarCotacao(true);
     var u = ultimo;
-    $("d-nome").textContent = $("nome").value.trim() || "Peça sem nome";
+    $("d-nome").textContent = ($("nome").value.trim() || "Peça sem nome") + ($("cli-nome").value.trim() ? " · " + $("cli-nome").value.trim() : "");
     $("d-valor-k").textContent = u.q === 1 ? "Valor" : "Valor total";
     $("d-valor").textContent = brl.format(u.total);
     $("d-qtd").textContent = u.q + (u.q === 1 ? " peça" : " peças");
@@ -658,7 +674,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   });
   campos.forEach(function (id) {
     $(id).addEventListener("input", function () { calcular(); salvar(); });
-    if (id !== "nome") $(id).addEventListener("focus", function () { this.select(); });
+    if (id !== "nome" && id.indexOf("cli-") !== 0) $(id).addEventListener("focus", function () { this.select(); });
   });
   $("reset").addEventListener("click", function () {
     Object.keys(PADRAO).forEach(function (k) { $(k).value = numN.format(PADRAO[k]); });
@@ -927,7 +943,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   $("abrir-venda").addEventListener("click", function () {
     calcular();
-    $("sv-cliente").value = ""; $("sv-tel").value = ""; $("sv-frete").value = ""; $("sv-prazo").value = ""; $("sv-pago").checked = false;
+    $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = ""; $("sv-prazo").value = ""; $("sv-pago").checked = false;
     resumoVenda();
     abrirSheet("sh-venda");
   });
@@ -944,6 +960,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       numero: proximoNumero(), criado: Date.now(),
       nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
       cliente: $("sv-cliente").value.trim(), telefone: $("sv-tel").value.trim(), prazo: $("sv-prazo").value,
+      whatsapp: $("cli-whats").value.trim(), email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
       frete: frete, valorPecas: u.total, valorUnit: u.unit, valorTotal: u.total + frete,
       custo: u.custo, impostos: u.impostos, margem: u.margem, desperdicio: u.desp,
       pesoTotal: u.peso, tempoTotal: u.tempo,
@@ -976,18 +993,20 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     renderPedidos();
   });
   $("limpar").addEventListener("click", function () {
-    confirmar("Limpar para nova peça?", "Apaga nome, quantidade, tempo, peso e embalagem. Filamento, margem, desperdício e custos fixos continuam como estão.", [
+    confirmar("Limpar para nova peça?", "Apaga cliente, resumo, nome da peça, quantidade, tempo, peso e embalagem. Filamento, margem, desperdício e custos fixos continuam como estão.", [
       { texto: "Limpar", classe: "primary", acao: function () {
+        ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo"].forEach(function (k) { $(k).value = ""; });
         $("nome").value = ""; $("qtd").value = "1";
         $("horas").value = ""; $("minutos").value = ""; $("decimal").value = "";
         $("peso").value = ""; $("embalagem").value = "";
         cotAtual = null;
         calcular(); salvar(); aplicarFil(false);
-        window.scrollTo(0, 0); $("nome").focus();
+        window.scrollTo(0, 0); $("cli-nome").focus();
         toast("Pronto para uma nova peça.");
       } }
     ]);
   });
+  $("cli-mesmo").addEventListener("click", function () { $("cli-whats").value = $("cli-tel").value; salvar(); });
   function listaPed() {
     return Object.keys(cache.pedidos).map(function (k) { return cache.pedidos[k]; })
       .sort(function (a, b) { return (a.criado || 0) - (b.criado || 0); });
@@ -1034,10 +1053,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           el("div", null, [
             el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + (p.filamento ? " · " + p.filamento : "") }),
-            el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) + (p.prazo ? " · prazo " + prazoBR(p.prazo) : "") + (p.telefone ? " · " + p.telefone : "") })
+            el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) + (p.prazo ? " · prazo " + prazoBR(p.prazo) : "") }),
+            (p.telefone || p.whatsapp || p.email) ? el("div", { class: "meta", text: [p.telefone ? "Tel. " + p.telefone : "", p.whatsapp && p.whatsapp !== p.telefone ? "WhatsApp " + p.whatsapp : (p.whatsapp ? "(WhatsApp)" : ""), p.email].filter(Boolean).join(" · ") }) : null
           ]),
           el("div", { class: "val" }, [brl.format(p.valorTotal), el("div", { class: "meta", text: p.frete ? "frete " + brl.format(p.frete) : "sem frete" })])
         ]),
+        p.resumo ? el("div", { class: "resumo", text: p.resumo }) : null,
         el("div", { class: "acts" }, [
           el("span", { class: "pill" + (atrasado ? " warn" : ""), text: atrasado ? "Atrasado · " + nomeStatus(p.status) : nomeStatus(p.status) }),
           el("span", { class: "pill" + (p.pago ? "" : " warn"), text: p.pago ? "Pago" : "A receber" })
@@ -1111,7 +1132,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   /* ---------- Cotações ---------- */
-  var CAMPOS_COT = ["nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem", "potencia", "kwh", "deprec", "impostos"];
+  var CAMPOS_COT = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem", "potencia", "kwh", "deprec", "impostos"];
   var cotAtual = null; // id da cotação aberta/salva por último
   function fotoEntradas() {
     var o = { modo: modo, desp: Number($("desp").value), filSel: $("fil-sel").value };
@@ -1124,6 +1145,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var u = ultimo, f = filAtual(), e = fotoEntradas();
     return {
       criado: Date.now(), nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
+      cliente: $("cli-nome").value.trim(), telefone: $("cli-tel").value.trim(), whatsapp: $("cli-whats").value.trim(),
+      email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
       valorUnit: u.unit, valorTotal: u.total, custo: u.custo, pesoTotal: u.peso, tempoTotal: u.tempo,
       margem: u.margem, filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
       entradas: e, assinatura: assinatura(e), status: status || "aberta", pedidoNumero: pedidoNumero || 0
@@ -1139,7 +1162,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("salvar-cot").addEventListener("click", function () { salvarCotacao(false); });
   function marcarCotacaoPedido(p) {
     var c = novaCotacao("pedido", p.numero);
-    c.cliente = p.cliente;
+    c.cliente = p.cliente || c.cliente;
     var atual = cotAtual && cache.cotacoes[cotAtual];
     if (atual && atual.assinatura === c.assinatura) {
       return gravar("cotacoes", cotAtual, Object.assign({}, atual, { status: "pedido", pedidoNumero: p.numero, cliente: p.cliente }));
