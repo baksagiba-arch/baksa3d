@@ -300,6 +300,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="ln total"><span>Preço de venda por peça</span><span id="r-final"></span></div>
       <div class="ln total"><span>Total <span class="op" id="op-qtd"></span></span><span id="r-total"></span></div>
     </div>
+    <div class="field">
+      <label for="frete">Frete</label>
+      <div class="inp"><span class="pre">R$</span><input id="frete" inputmode="decimal" placeholder="0,00"></div>
+      <p class="hint">Somado ao total sem margem e sem impostos. Vai junto para a cotação e para a venda.</p>
+    </div>
+    <div class="lines" id="box-tfrete" hidden>
+      <div class="ln total"><span>Total com frete</span><span id="r-tfrete"></span></div>
+    </div>
     <div class="row2">
       <button type="button" class="big-btn sec" id="salvar-cot">Salvar cotação</button>
       <button type="button" class="big-btn" id="abrir-venda">Registrar venda</button>
@@ -491,6 +499,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div><span class="k2">Valor por peça</span><b id="d-unit"></b></div>
       <div><span class="k2">Peso</span><b id="d-peso"></b></div>
       <div><span class="k2">Tempo de impressão</span><b id="d-tempo"></b></div>
+      <div id="d-frete-box"><span class="k2">Frete</span><b id="d-frete"></b></div>
     </div>
     <div class="d-acoes">
       <button type="button" id="copiar-demo" class="primary">Copiar texto</button>
@@ -527,8 +536,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var modo = "hm";
   var ultimo = {};
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
-  var PECA = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem"];
-  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "potencia", "kwh", "deprec", "margem", "impostos"];
+  var PECA = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
+  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "margem", "impostos"];
 
   function carregar() {
     var s = null;
@@ -604,12 +613,15 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("op-qtd").textContent = q + (q === 1 ? " peça" : " peças");
     var total = r.total;
     $("r-total").textContent = brl.format(total);
-    $("b-label").textContent = q === 1 ? "Preço de venda" : "Total · " + q + " peças";
-    $("b-final").textContent = brl.format(total);
+    var frete = parse($("frete").value); // frete soma sem margem nem impostos
+    $("box-tfrete").hidden = !(frete > 0);
+    $("r-tfrete").textContent = brl.format(total + frete);
+    $("b-label").textContent = (q === 1 ? "Preço de venda" : "Total · " + q + " peças") + (frete > 0 ? " + frete" : "");
+    $("b-final").textContent = brl.format(total + frete);
     $("b-unit").textContent = brl.format(final);
     $("b-tempo").textContent = hm(t * q);
     ultimo = { unit: final, total: total, q: q, peso: peso * q, tempo: t * q,
-      custo: custo * q + embTotal, embalagem: embTotal, impostos: comMargem * imp / 100 * q, margem: m, desp: dp };
+      custo: custo * q + embTotal, embalagem: embTotal, frete: frete, impostos: comMargem * imp / 100 * q, margem: m, desp: dp };
     [].forEach.call($("chips").children, function (b) { b.setAttribute("aria-pressed", parse(b.dataset.m) === m); });
   }
 
@@ -657,14 +669,16 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       $("d-valor-k").textContent + ": " + $("d-valor").textContent,
       "Peso: " + $("d-peso").textContent,
       "Tempo de impressão: " + $("d-tempo").textContent
-    ].join("\n");
+    ].concat(ultimo.frete > 0 ? ["Frete: " + $("d-frete").textContent + " (incluso no valor)"] : []).join("\n");
   }
   $("abrir-demo").addEventListener("click", function () {
     if (typeof salvarCotacao === "function") salvarCotacao(true);
     var u = ultimo;
     $("d-nome").textContent = ($("nome").value.trim() || "Peça sem nome") + ($("cli-nome").value.trim() ? " · " + $("cli-nome").value.trim() : "");
     $("d-valor-k").textContent = u.q === 1 ? "Valor" : "Valor total";
-    $("d-valor").textContent = brl.format(u.total);
+    $("d-valor").textContent = brl.format(u.total + u.frete);
+    $("d-frete").textContent = brl.format(u.frete);
+    $("d-frete-box").hidden = !(u.frete > 0);
     $("d-qtd").textContent = u.q + (u.q === 1 ? " peça" : " peças");
     $("d-unit").textContent = brl.format(u.unit);
     $("d-peso").textContent = numN.format(u.peso) + " g";
@@ -1005,7 +1019,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   $("abrir-venda").addEventListener("click", function () {
     calcular();
-    $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = ""; $("sv-prazo").value = ""; $("sv-pago").checked = false;
+    $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = $("frete").value; $("sv-prazo").value = ""; $("sv-pago").checked = false;
     resumoVenda();
     abrirSheet("sh-venda");
   });
@@ -1055,12 +1069,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     renderPedidos();
   });
   $("limpar").addEventListener("click", function () {
-    confirmar("Limpar para nova peça?", "Apaga cliente, resumo, nome da peça, quantidade, tempo, peso e embalagem. Filamento, margem, desperdício e custos fixos continuam como estão.", [
+    confirmar("Limpar para nova peça?", "Apaga cliente, resumo, nome da peça, quantidade, tempo, peso, embalagem e frete. Filamento, margem, desperdício e custos fixos continuam como estão.", [
       { texto: "Limpar", classe: "primary", acao: function () {
         ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo"].forEach(function (k) { $(k).value = ""; });
         $("nome").value = ""; $("qtd").value = "1";
         $("horas").value = ""; $("minutos").value = ""; $("decimal").value = "";
-        $("peso").value = ""; $("embalagem").value = "";
+        $("peso").value = ""; $("embalagem").value = ""; $("frete").value = "";
         cotAtual = null;
         calcular(); salvar(); aplicarFil(false);
         window.scrollTo(0, 0); $("cli-nome").focus();
@@ -1194,7 +1208,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   /* ---------- Cotações ---------- */
-  var CAMPOS_COT = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem", "potencia", "kwh", "deprec", "impostos"];
+  var CAMPOS_COT = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "margem", "potencia", "kwh", "deprec", "impostos"];
   var cotAtual = null; // id da cotação aberta/salva por último
   function fotoEntradas() {
     var o = { modo: modo, desp: Number($("desp").value), filSel: $("fil-sel").value };
@@ -1209,7 +1223,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       criado: Date.now(), nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
       cliente: $("cli-nome").value.trim(), telefone: $("cli-tel").value.trim(), whatsapp: $("cli-whats").value.trim(),
       email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
-      valorUnit: u.unit, valorTotal: u.total, custo: u.custo, pesoTotal: u.peso, tempoTotal: u.tempo,
+      valorUnit: u.unit, valorTotal: u.total, frete: u.frete, custo: u.custo, pesoTotal: u.peso, tempoTotal: u.tempo,
       margem: u.margem, filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
       entradas: e, assinatura: assinatura(e), status: status || "aberta", pedidoNumero: pedidoNumero || 0
     };
@@ -1279,6 +1293,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       var virou = c.status === "pedido";
       var r = !virou && precoCot(c);
       var vTotal = r ? r.total : c.valorTotal || 0, vUnit = r ? r.final : c.valorUnit || 0;
+      var vFrete = c.entradas ? parse(c.entradas.frete) : c.frete || 0;
       box.appendChild(el("div", { class: "item" }, [
         el("div", { class: "top" }, [
           c.hex ? el("span", { class: "spool", style: "--sw:" + c.hex, "aria-hidden": "true" }) : null,
@@ -1287,7 +1302,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
             el("div", { class: "meta", text: dataBR(c.criado) + " " + new Date(c.criado).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + (c.cliente ? " · " + c.cliente : "") }),
             el("div", { class: "meta", text: (c.filamento || "Preço manual") + " · " + kg(c.pesoTotal || 0) + " · " + hm(c.tempoTotal || 0) + " · margem ×" + numN.format(c.margem || 0) })
           ]),
-          el("div", { class: "val" }, [brl.format(vTotal), el("div", { class: "meta", text: brl.format(vUnit) + " cada" })])
+          el("div", { class: "val" }, [brl.format(vTotal + vFrete), el("div", { class: "meta", text: brl.format(vUnit) + " cada" + (vFrete > 0 ? " · frete " + brl.format(vFrete) : "") })])
         ]),
         el("div", { class: "acts" }, [el("span", { class: "pill", text: virou ? "Virou pedido nº " + c.pedidoNumero : "Em aberto" })]),
         el("div", { class: "acts" }, [
@@ -1296,7 +1311,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           } }) : null,
           el("button", { type: "button", text: "Abrir no custo", onclick: function () { carregarCotacao(c); abrirAba("custo"); toast("Cotação carregada na aba Custo."); } }),
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () {
-            confirmar("Excluir cotação?", c.nome + " × " + c.qtd + " · " + brl.format(vTotal), [
+            confirmar("Excluir cotação?", c.nome + " × " + c.qtd + " · " + brl.format(vTotal + vFrete), [
               { texto: "Excluir", classe: "danger", acao: function () { apagar("cotacoes", c.id).then(function () { toast("Cotação excluída."); }); } }
             ]);
           } })
