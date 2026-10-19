@@ -554,27 +554,37 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     return parse($("horas").value) + parse($("minutos").value) / 60;
   }
 
+  // A conta de uma peça. v: t (horas), peso (g), kg (R$/kg), potencia, kwh, deprec, emb (caixa), q, m, imp, dp
+  function conta(v) {
+    var r = { material: v.peso * v.kg / 1000, energia: v.t * v.potencia * v.kwh, deprec: v.t * v.deprec };
+    r.custo = r.material + r.energia + r.deprec;
+    r.comMargem = r.custo * v.m;
+    r.venda = r.comMargem * (v.imp / 100 + 1);
+    r.desp = r.venda * v.dp / 100;
+    r.imp3d = r.venda + r.desp;
+    // a caixa é uma por pedido e entra só pelo custo: sem margem, impostos ou desperdício
+    r.emb = v.emb / v.q;
+    r.final = r.imp3d + r.emb;
+    r.total = r.imp3d * v.q + v.emb;
+    return r;
+  }
+  // Custos fixos e desperdício valem os de agora, para cotações abertas acompanharem as mudanças
+  function fixosAtuais() {
+    return { potencia: parse($("potencia").value), kwh: parse($("kwh").value), deprec: parse($("deprec").value),
+      imp: parse($("impostos").value), dp: Number($("desp").value) };
+  }
+
   function calcular() {
     var t = tempo();
     var peso = parse($("peso").value);
-    var porGrama = parse($("filamento").value) / 1000;
-    var material = peso * porGrama;
-    var energia = t * parse($("potencia").value) * parse($("kwh").value);
-    var deprec = t * parse($("deprec").value);
-    // a caixa é uma por pedido e entra só pelo custo: sem margem, impostos ou desperdício
-    var embTotal = parse($("embalagem").value);
-    var emb = embTotal / qtd();
-    var custo = material + energia + deprec;
-    var m = parse($("margem").value);
-    var comMargem = custo * m;
-    var imp = parse($("impostos").value);
-    var venda = comMargem * (imp / 100 + 1);
-    var dp = Number($("desp").value);
-    var desp = venda * dp / 100;
+    var v = Object.assign(fixosAtuais(), { t: t, peso: peso, kg: parse($("filamento").value),
+      emb: parse($("embalagem").value), q: qtd(), m: parse($("margem").value) });
+    var r = conta(v);
+    var material = r.material, energia = r.energia, deprec = r.deprec, emb = r.emb, custo = r.custo;
+    var m = v.m, comMargem = r.comMargem, imp = v.imp, venda = r.venda, dp = v.dp, desp = r.desp;
+    var embTotal = v.emb, imp3d = r.imp3d, final = r.final;
     $("desp-v").textContent = dp + "%";
     $("op-desp").textContent = dp + "%";
-    var imp3d = venda + desp;
-    var final = imp3d + emb;
 
     $("tempo-eq").textContent = modo === "dec" ? "= " + hm(t) : "= " + num2.format(t) + " h";
     $("r-mat").textContent = brl.format(material);
@@ -592,7 +602,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("r-final").textContent = brl.format(final);
     var q = qtd();
     $("op-qtd").textContent = q + (q === 1 ? " peça" : " peças");
-    var total = imp3d * q + embTotal;
+    var total = r.total;
     $("r-total").textContent = brl.format(total);
     $("b-label").textContent = q === 1 ? "Preço de venda" : "Total · " + q + " peças";
     $("b-final").textContent = brl.format(total);
@@ -798,6 +808,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("bar").hidden = nome !== "custo";
     document.querySelector(".wrap").classList.toggle("sem-bar", nome !== "custo");
     try { localStorage.setItem("baksa3d.aba", nome); } catch (e) {}
+    if (nome === "cotacoes" && typeof renderCotacoes === "function") renderCotacoes();
     window.scrollTo(0, 0);
   }
   ABAS.forEach(function (a) { $("t-" + a).addEventListener("click", function () { abrirAba(a); }); });
@@ -1221,10 +1232,20 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var id = novoId(); cotAtual = id;
     return gravar("cotacoes", id, c);
   }
+  // Preço de uma cotação aberta pelas regras e custos de agora (filamento do estoque com o preço atual)
+  var FIXOS = ["potencia", "kwh", "deprec", "impostos"];
+  function precoCot(c) {
+    var e = c.entradas;
+    if (!e) return null;
+    var f = e.filSel && cache.filamentos[e.filSel];
+    var q = Math.max(1, Math.round(parse(e.qtd)) || 1);
+    var t = e.modo === "dec" ? parse(e.decimal) : parse(e.horas) + parse(e.minutos) / 60;
+    return conta(Object.assign(fixosAtuais(), { t: t, peso: parse(e.peso), q: q, m: parse(e.margem), emb: parse(e.embalagem),
+      kg: f ? Math.round(porKg(f) * 100) / 100 : parse(e.filamento) }));
+  }
   function carregarCotacao(c) {
     var e = c.entradas || {};
-    CAMPOS_COT.forEach(function (k) { if (e[k] != null) $(k).value = e[k]; });
-    if (e.desp != null) $("desp").value = e.desp;
+    CAMPOS_COT.forEach(function (k) { if (e[k] != null && FIXOS.indexOf(k) < 0) $(k).value = e[k]; });
     setModo(e.modo || "hm", true);
     $("fil-sel").value = e.filSel && cache.filamentos[e.filSel] ? e.filSel : "";
     if (e.filSel && !cache.filamentos[e.filSel]) toast("O filamento desta cotação não está mais no estoque. Usando o preço salvo.");
@@ -1256,6 +1277,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var box = $("q-lista"); box.textContent = "";
     lista.forEach(function (c) {
       var virou = c.status === "pedido";
+      var r = !virou && precoCot(c);
+      var vTotal = r ? r.total : c.valorTotal || 0, vUnit = r ? r.final : c.valorUnit || 0;
       box.appendChild(el("div", { class: "item" }, [
         el("div", { class: "top" }, [
           c.hex ? el("span", { class: "spool", style: "--sw:" + c.hex, "aria-hidden": "true" }) : null,
@@ -1264,7 +1287,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
             el("div", { class: "meta", text: dataBR(c.criado) + " " + new Date(c.criado).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + (c.cliente ? " · " + c.cliente : "") }),
             el("div", { class: "meta", text: (c.filamento || "Preço manual") + " · " + kg(c.pesoTotal || 0) + " · " + hm(c.tempoTotal || 0) + " · margem ×" + numN.format(c.margem || 0) })
           ]),
-          el("div", { class: "val" }, [brl.format(c.valorTotal || 0), el("div", { class: "meta", text: brl.format(c.valorUnit || 0) + " cada" })])
+          el("div", { class: "val" }, [brl.format(vTotal), el("div", { class: "meta", text: brl.format(vUnit) + " cada" })])
         ]),
         el("div", { class: "acts" }, [el("span", { class: "pill", text: virou ? "Virou pedido nº " + c.pedidoNumero : "Em aberto" })]),
         el("div", { class: "acts" }, [
@@ -1273,7 +1296,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           } }) : null,
           el("button", { type: "button", text: "Abrir no custo", onclick: function () { carregarCotacao(c); abrirAba("custo"); toast("Cotação carregada na aba Custo."); } }),
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () {
-            confirmar("Excluir cotação?", c.nome + " × " + c.qtd + " · " + brl.format(c.valorTotal || 0), [
+            confirmar("Excluir cotação?", c.nome + " × " + c.qtd + " · " + brl.format(vTotal), [
               { texto: "Excluir", classe: "danger", acao: function () { apagar("cotacoes", c.id).then(function () { toast("Cotação excluída."); }); } }
             ]);
           } })
