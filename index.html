@@ -258,7 +258,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="field">
       <label for="embalagem">Embalagem (caixa do pedido)</label>
       <div class="inp"><span class="pre">R$</span><input id="embalagem" inputmode="decimal" placeholder="0,00"></div>
-      <p class="hint">Uma caixa para todas as peças. Varia com o tamanho e a qualidade.</p>
+      <p class="hint">Uma caixa para todas as peças. Entra só pelo custo, sem margem, impostos ou desperdício.</p>
     </div>
 
     <div class="field">
@@ -291,11 +291,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="ln"><span>Material</span><span id="r-mat"></span></div>
       <div class="ln"><span>Energia elétrica</span><span id="r-ene"></span></div>
       <div class="ln"><span>Depreciação + manutenção</span><span id="r-dep"></span></div>
-      <div class="ln"><span>Embalagem <span class="op" id="op-emb"></span></span><span id="r-emb"></span></div>
-      <div class="ln sub"><span>Preço de custo</span><span id="r-custo"></span></div>
+      <div class="ln sub"><span>Custo da impressão</span><span id="r-custo"></span></div>
       <div class="ln"><span>Com a margem <span class="op" id="op-margem"></span></span><span id="r-margem"></span></div>
       <div class="ln"><span>Valor de venda <span class="op" id="op-imp"></span></span><span id="r-venda"></span></div>
       <div class="ln"><span>Desperdícios e perdas <span class="op" id="op-desp">30%</span></span><span id="r-desp"></span></div>
+      <div class="ln sub"><span>Preço da impressão</span><span id="r-imp3d"></span></div>
+      <div class="ln"><span>Embalagem, só o custo <span class="op" id="op-emb"></span></span><span id="r-emb"></span></div>
       <div class="ln total"><span>Preço de venda por peça</span><span id="r-final"></span></div>
       <div class="ln total"><span>Total <span class="op" id="op-qtd"></span></span><span id="r-total"></span></div>
     </div>
@@ -560,8 +561,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var material = peso * porGrama;
     var energia = t * parse($("potencia").value) * parse($("kwh").value);
     var deprec = t * parse($("deprec").value);
-    var emb = parse($("embalagem").value) / qtd(); // caixa única rateada entre as peças
-    var custo = material + energia + deprec + emb;
+    // a caixa é uma por pedido e entra só pelo custo: sem margem, impostos ou desperdício
+    var embTotal = parse($("embalagem").value);
+    var emb = embTotal / qtd();
+    var custo = material + energia + deprec;
     var m = parse($("margem").value);
     var comMargem = custo * m;
     var imp = parse($("impostos").value);
@@ -570,7 +573,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var desp = venda * dp / 100;
     $("desp-v").textContent = dp + "%";
     $("op-desp").textContent = dp + "%";
-    var final = venda + desp;
+    var imp3d = venda + desp;
+    var final = imp3d + emb;
 
     $("tempo-eq").textContent = modo === "dec" ? "= " + hm(t) : "= " + num2.format(t) + " h";
     $("r-mat").textContent = brl.format(material);
@@ -578,6 +582,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("r-dep").textContent = brl.format(deprec);
     $("r-emb").textContent = brl.format(emb);
     $("op-emb").textContent = qtd() > 1 ? "caixa ÷ " + qtd() : "";
+    $("r-imp3d").textContent = brl.format(imp3d);
     $("r-custo").textContent = brl.format(custo);
     $("op-margem").textContent = "×" + numN.format(m);
     $("r-margem").textContent = brl.format(comMargem);
@@ -587,13 +592,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("r-final").textContent = brl.format(final);
     var q = qtd();
     $("op-qtd").textContent = q + (q === 1 ? " peça" : " peças");
-    $("r-total").textContent = brl.format(final * q);
+    var total = imp3d * q + embTotal;
+    $("r-total").textContent = brl.format(total);
     $("b-label").textContent = q === 1 ? "Preço de venda" : "Total · " + q + " peças";
-    $("b-final").textContent = brl.format(final * q);
+    $("b-final").textContent = brl.format(total);
     $("b-unit").textContent = brl.format(final);
     $("b-tempo").textContent = hm(t * q);
-    ultimo = { unit: final, total: final * q, q: q, peso: peso * q, tempo: t * q,
-      custo: custo * q, impostos: comMargem * imp / 100 * q, margem: m, desp: dp };
+    ultimo = { unit: final, total: total, q: q, peso: peso * q, tempo: t * q,
+      custo: custo * q + embTotal, embalagem: embTotal, impostos: comMargem * imp / 100 * q, margem: m, desp: dp };
     [].forEach.call($("chips").children, function (b) { b.setAttribute("aria-pressed", parse(b.dataset.m) === m); });
   }
 
