@@ -213,6 +213,13 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .medidor i.warn { background: var(--warn); }
 .medidor .marca { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); border-radius: 1px; }
 .ln.ok > span:last-child { color: var(--accent); font-weight: 600; }
+.opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.opcoes button { display: grid; gap: 2px; text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 10px 12px; cursor: pointer; min-width: 0; }
+.opcoes button b { font: 600 17px var(--f-num); }
+.opcoes button small { color: var(--muted); font-size: 12px; }
+.opcoes button[aria-checked="true"] { border: 2px solid var(--accent); background: var(--accent-soft); padding: 9px 11px; }
+.opcoes button[aria-checked="true"] b { color: var(--accent); }
+.opcoes button:disabled { opacity: .45; cursor: default; }
 .linha-btn { display: flex; flex-wrap: wrap; gap: 8px; }
 .bar .k { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--bar-muted); }
 .bar .big { font: 700 36px/1.05 var(--f-display); font-variant-numeric: tabular-nums; }
@@ -363,21 +370,23 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="ln total"><span>Total com frete</span><span id="r-tfrete"></span></div>
     </div>
     <div class="lucro" id="box-lucro">
-      <div class="slhead"><span class="lbl" id="l-titulo">Lucro do pedido</span><b id="l-valor"></b></div>
-      <div class="medidor" aria-hidden="true"><i id="l-bar"></i><span class="marca" id="l-marca" title="Lucro no preço mínimo"></span></div>
-      <p class="hint" id="l-info"></p>
-      <div class="field" id="l-sim-box">
-        <div class="slhead"><label for="l-desc">Simular desconto</label><b id="l-desc-v">0%</b></div>
+      <span class="lbl">Preço combinado com o cliente</span>
+      <div class="opcoes" id="l-opcoes" role="radiogroup" aria-label="Preço combinado">
+        <button type="button" role="radio" data-neg="venda"><span class="k2">Preço cheio</span><b id="o-venda"></b><small id="o-venda-s"></small></button>
+        <button type="button" role="radio" data-neg="favoravel"><span class="k2">Favorável</span><b id="o-favoravel"></b><small id="o-favoravel-s"></small></button>
+        <button type="button" role="radio" data-neg="minimo"><span class="k2">Mínimo</span><b id="o-minimo"></b><small id="o-minimo-s"></small></button>
+        <button type="button" role="radio" data-neg="desconto"><span class="k2">Desconto</span><b id="o-desconto"></b><small id="o-desconto-s"></small></button>
+      </div>
+      <div class="field" id="l-sim-box" hidden>
+        <div class="slhead"><label for="l-desc">Desconto combinado</label><b id="l-desc-v">0%</b></div>
         <input type="range" id="l-desc" min="0" max="20" step="1" value="0">
         <p class="hint" id="l-sim"></p>
-        <button type="button" class="reset" id="l-aplicar" hidden>Aplicar desconto</button>
       </div>
-      <div class="lines">
-        <div class="ln ok"><span>Preço favorável sugerido <span class="op" id="l-fav-op"></span></span><span id="l-fav"></span></div>
-        <div class="ln"><span>Preço mínimo <span class="op" id="l-min-op"></span></span><span id="l-min"></span></div>
-        <div class="ln sub"><span>Desconto máximo seguro</span><span id="l-max"></span></div>
-      </div>
-      <p class="hint">Lucro = valor das peças − custo de produção − impostos (frete fora). O desconto entra na margem, então cotação e venda já saem com o preço novo.</p>
+      <div class="slhead"><span class="lbl" id="l-titulo">Lucro neste preço</span><b id="l-valor"></b></div>
+      <div class="medidor" aria-hidden="true"><i id="l-bar"></i><span class="marca" id="l-marca" title="Lucro no preço mínimo"></span></div>
+      <p class="hint" id="l-info"></p>
+      <div class="lines"><div class="ln sub"><span>Desconto máximo seguro</span><span id="l-max"></span></div></div>
+      <p class="hint">O preço escolhido aqui é o que vai para a cotação, o orçamento em PDF e a venda. Lucro = valor das peças − custo − impostos (frete fora).</p>
     </div>
     <div class="row2">
       <button type="button" class="big-btn sec" id="salvar-cot">Salvar cotação</button>
@@ -632,7 +641,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <h3 id="or-titulo">Orçamento em PDF</h3>
     <p class="hint">Mesmo modelo do orçamento da Forma Infinita 3D. Confira e toque em Gerar: o PDF abre para enviar no WhatsApp.</p>
     <div class="row2">
-      <div class="field"><label for="or-num">Nº do orçamento</label><div class="inp"><input id="or-num" class="txt" autocomplete="off"></div></div>
+      <div class="field"><label for="or-num">Nº do orçamento (letra = versão)</label><div class="inp"><input id="or-num" class="txt" autocomplete="off"></div></div>
       <div class="field"><label for="or-data">Data</label><div class="inp"><input id="or-data" class="txt" type="date"></div></div>
     </div>
     <h2>Comprador</h2>
@@ -734,6 +743,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   var modo = "hm";
+  var neg = { tipo: "venda", desc: 0 }; // preço combinado com o cliente
+  var NOMES_NEG = { venda: "Preço cheio", favoravel: "Favorável", minimo: "Mínimo", desconto: "Desconto" };
   var ultimo = {};
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
   var PECA = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
@@ -749,12 +760,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     // a margem mínima padrão mudou de ×3 para ×2 (21/10/2026): aparelhos que ainda estão no padrão antigo passam para o novo
     try { if (!localStorage.getItem("baksa3d.mm2")) { if (s && s.margemMin === 3) { s.margemMin = 2; $("margemMin").value = numN.format(2); localStorage.setItem(KEY, JSON.stringify(s)); } localStorage.setItem("baksa3d.mm2", "1"); } } catch (e) {}
     if (s && s.modo) setModo(s.modo, true);
+    if (s && s.neg && NOMES_NEG[s.neg.tipo]) neg = { tipo: s.neg.tipo, desc: +s.neg.desc || 0 };
     $("desp").value = s && s.desp != null ? s.desp : DESP_PADRAO;
     // última peça custeada
     if (s && s.peca) PECA.forEach(function (k) { if (s.peca[k] != null) $(k).value = s.peca[k]; });
   }
   function salvar() {
-    var s = { modo: modo, filamento: parse($("filamento").value), desp: Number($("desp").value), filSel: $("fil-sel").value, peca: {} };
+    var s = { modo: modo, filamento: parse($("filamento").value), desp: Number($("desp").value), filSel: $("fil-sel").value, neg: neg, peca: {} };
     PECA.forEach(function (k) { s.peca[k] = $(k).value; });
     Object.keys(PADRAO).forEach(function (k) { s[k] = parse($(k).value); });
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
@@ -790,6 +802,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var peso = parse($("peso").value);
     var v = Object.assign(fixosAtuais(), { t: t, peso: peso, kg: parse($("filamento").value),
       emb: parse($("embalagem").value), q: qtd(), m: parse($("margem").value) });
+    var vBase = v;
+    v = Object.assign({}, vBase, { m: margemNeg(vBase, neg.tipo, neg.desc, parse($("margemMin").value)) });
     var r = conta(v);
     var material = r.material, energia = r.energia, deprec = r.deprec, emb = r.emb, custo = r.custo;
     var m = v.m, comMargem = r.comMargem, imp = v.imp, venda = r.venda, dp = v.dp, desp = r.desp;
@@ -818,63 +832,69 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var frete = parse($("frete").value); // frete soma sem margem nem impostos
     $("box-tfrete").hidden = !(frete > 0);
     $("r-tfrete").textContent = brl.format(total + frete);
-    $("b-label").textContent = (q === 1 ? "Preço de venda" : "Total · " + q + " peças") + (frete > 0 ? " + frete" : "");
+    $("b-label").textContent = (q === 1 ? "Preço de venda" : "Total · " + q + " peças") + (frete > 0 ? " + frete" : "") + (v.m !== vBase.m ? " · " + { favoravel: "favorável", minimo: "mínimo", desconto: "com desconto" }[neg.tipo] : "");
     $("b-final").textContent = brl.format(total + frete);
     $("b-unit").textContent = brl.format(final);
     $("b-tempo").textContent = hm(t * q);
     ultimo = { unit: final, total: total, q: q, peso: peso * q, tempo: t * q,
       custo: custo * q + embTotal, embalagem: embTotal, frete: frete, impostos: comMargem * imp / 100 * q, margem: m, desp: dp };
-    [].forEach.call($("chips").children, function (b) { b.setAttribute("aria-pressed", parse(b.dataset.m) === m); });
-    medirLucro(v, r);
+    [].forEach.call($("chips").children, function (b) { b.setAttribute("aria-pressed", parse(b.dataset.m) === vBase.m); });
+    medirLucro(vBase, v, r);
   }
 
-  // Lucro do pedido e quanto dá para descontar sem descer da margem mínima (embalagem e frete ficam fora do desconto)
-  var calcLucro = null;
+  // Preço combinado: a margem de verdade sai da margem de venda, da mínima ou do desconto escolhido (embalagem e frete ficam fora)
+  function margemNeg(v, tipo, desc, mMin) {
+    var m = v.m;
+    if (!tipo || tipo === "venda" || !(m > mMin)) return m;
+    if (tipo === "minimo") return mMin;
+    if (tipo === "favoravel") return (m + mMin) / 2;
+    var r = conta(v), parte = r.total - v.emb, d = (desc || 0) / 100;
+    return Math.max(mMin, parte > 0 ? m * (r.total * (1 - d) - v.emb) / parte : m);
+  }
   function lucroDe(v, r) { return r.total - (r.custo * v.q + v.emb) - r.comMargem * v.imp / 100 * v.q; }
-  function medirLucro(v, r) {
+  function medirLucro(vBase, v, r) {
     $("box-lucro").hidden = !(r.total > 0);
     if (!(r.total > 0)) return;
-    var mMin = parse($("margemMin").value), lucro = lucroDe(v, r), pct = lucro / r.total;
-    var rMin = conta(Object.assign({}, v, { m: mMin })), lMin = lucroDe(v, rMin);
-    var rFav = conta(Object.assign({}, v, { m: (v.m + mMin) / 2 }));
-    var folga = v.m > mMin && r.total > rMin.total;
-    $("l-titulo").textContent = "Lucro do pedido";
-    $("l-valor").textContent = brl.format(lucro); $("l-valor").className = folga ? "" : "warn";
+    var mMin = parse($("margemMin").value), rBase = conta(vBase);
+    var rMin = conta(Object.assign({}, vBase, { m: mMin })), lMin = lucroDe(vBase, rMin);
+    var rFav = conta(Object.assign({}, vBase, { m: (vBase.m + mMin) / 2 }));
+    var folga = vBase.m > mMin && rBase.total > rMin.total;
+    var max = folga ? Math.floor((1 - rMin.total / rBase.total) * 100) : 0;
+    function pc(x) { return "−" + Math.round((1 - x.total / rBase.total) * 100) + "%"; }
+    $("o-venda").textContent = brl.format(rBase.total); $("o-venda-s").textContent = "margem ×" + numN.format(vBase.m);
+    $("o-favoravel").textContent = folga ? brl.format(rFav.total) : "–"; $("o-favoravel-s").textContent = folga ? pc(rFav) + " · margem ×" + numN.format(Math.round((vBase.m + mMin) / 2 * 100) / 100) : "sem folga";
+    $("o-minimo").textContent = folga ? brl.format(rMin.total) : "–"; $("o-minimo-s").textContent = folga ? pc(rMin) + " · margem ×" + numN.format(mMin) : "sem folga";
+    $("o-desconto").textContent = folga && neg.tipo === "desconto" ? brl.format(r.total) : folga ? "Até " + max + "%" : "–";
+    $("o-desconto-s").textContent = folga ? (neg.tipo === "desconto" ? pc(r) + " escolhido" : "você escolhe o %") : "sem folga";
+    [].forEach.call($("l-opcoes").children, function (b) {
+      var t = b.dataset.neg, ativo = folga ? neg.tipo : "venda";
+      b.disabled = t !== "venda" && !folga;
+      b.setAttribute("aria-checked", t === ativo);
+    });
+    // desconto escolhido à mão
+    $("l-sim-box").hidden = !(folga && neg.tipo === "desconto" && max >= 1);
+    $("l-desc").max = Math.max(1, max);
+    if (neg.desc > max) neg.desc = max;
+    $("l-desc").value = neg.desc;
+    $("l-desc-v").textContent = neg.desc + "%";
+    $("l-sim").textContent = "Total " + brl.format(r.total) + " · o cliente economiza " + brl.format(rBase.total - r.total) + ". Máximo seguro: " + max + "%.";
+    // medidor do lucro no preço escolhido
+    var lucro = lucroDe(v, r), pct = lucro / r.total, lBase = lucroDe(vBase, rBase), cheio = v.m === vBase.m;
+    $("l-titulo").textContent = cheio ? "Lucro no preço cheio" : { favoravel: "Lucro no preço favorável", minimo: "Lucro no preço mínimo", desconto: "Lucro com o desconto" }[neg.tipo];
+    $("l-valor").textContent = brl.format(lucro); $("l-valor").className = folga || cheio ? "" : "warn";
     $("l-bar").style.width = Math.max(0, Math.min(100, pct * 100)) + "%"; $("l-bar").className = folga ? "" : "warn";
     $("l-marca").style.left = Math.max(0, Math.min(100, lMin / rMin.total * 100)) + "%";
-    $("l-info").textContent = Math.round(pct * 100) + "% do valor das peças fica de lucro" + (folga ? "." : ". A margem está igual ou abaixo da mínima (×" + numN.format(mMin) + "): não dá desconto sem apertar.");
-    $("l-fav").textContent = folga ? brl.format(rFav.total) : "–";
-    $("l-fav-op").textContent = folga ? Math.round((1 - rFav.total / r.total) * 100) + "% de desconto · lucro " + brl.format(lucroDe(v, rFav)) : "";
-    $("l-min").textContent = brl.format(rMin.total);
-    $("l-min-op").textContent = "margem ×" + numN.format(mMin) + " · lucro " + brl.format(lMin);
-    var max = folga ? Math.floor((1 - rMin.total / r.total) * 100) : 0;
-    $("l-max").textContent = folga ? max + "% · até " + brl.format(r.total - rMin.total) : "sem margem para desconto";
-    $("l-sim-box").hidden = max < 1;
-    $("l-desc").max = Math.max(1, max);
-    if (Number($("l-desc").value) > max) $("l-desc").value = max;
-    var d = Number($("l-desc").value) / 100;
-    calcLucro = null;
-    $("l-desc-v").textContent = Math.round(d * 100) + "%";
-    if (!d) { $("l-sim").textContent = "Arraste para ver o preço e o lucro com desconto. Máximo seguro: " + max + "%."; $("l-aplicar").hidden = true; return; }
-    var parte = r.total - v.emb, novaM = parte > 0 ? v.m * (r.total * (1 - d) - v.emb) / parte : v.m;
-    var rD = conta(Object.assign({}, v, { m: novaM })), lD = lucroDe(v, rD), pD = lD / rD.total;
-    // o medidor de lucro acompanha a barra de desconto
-    $("l-titulo").textContent = "Lucro com " + Math.round(d * 100) + "% de desconto";
-    $("l-valor").textContent = brl.format(lD);
-    $("l-bar").style.width = Math.max(0, Math.min(100, pD * 100)) + "%";
-    $("l-info").textContent = Math.round(pD * 100) + "% do valor fica de lucro (sem desconto: " + brl.format(lucro) + ", " + Math.round(pct * 100) + "%).";
-    $("l-sim").textContent = "Com " + Math.round(d * 100) + "% de desconto: total " + brl.format(rD.total) + " (cliente economiza " + brl.format(r.total - rD.total) + ") e lucro " + brl.format(lD) + ".";
-    $("l-aplicar").hidden = false;
-    $("l-aplicar").textContent = "Aplicar " + Math.round(d * 100) + "% de desconto (margem vira ×" + numN.format(Math.round(novaM * 100) / 100) + ")";
-    calcLucro = novaM;
+    $("l-info").textContent = Math.round(pct * 100) + "% do valor das peças fica de lucro" + (cheio ? "" : " (no preço cheio: " + brl.format(lBase) + ", " + Math.round(lBase / rBase.total * 100) + "%)") + (folga ? "." : ". A margem de venda está igual ou abaixo da mínima (×" + numN.format(mMin) + "): não dá desconto.");
+    $("l-max").textContent = folga ? max + "% · até " + brl.format(rBase.total - rMin.total) : "sem folga para desconto";
   }
-  $("l-desc").addEventListener("input", calcular);
-  $("l-aplicar").addEventListener("click", function () {
-    if (calcLucro == null) return;
-    var d = $("l-desc").value; $("l-desc").value = 0;
-    setMargem(calcLucro);
-    toast("Desconto de " + d + "% aplicado. A cotação e a venda usam o preço novo.");
+  [].forEach.call($("l-opcoes").children, function (b) {
+    b.addEventListener("click", function () {
+      neg.tipo = b.dataset.neg;
+      if (neg.tipo === "desconto" && !neg.desc) neg.desc = 10;
+      calcular(); salvar();
+    });
   });
+  $("l-desc").addEventListener("input", function () { neg.desc = Number(this.value); calcular(); salvar(); });
 
   function setMargem(v) {
     v = Math.max(0, Math.round(v * 100) / 100);
@@ -1425,7 +1445,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         $("nome").value = ""; $("qtd").value = "1";
         $("horas").value = ""; $("minutos").value = ""; $("decimal").value = "";
         $("peso").value = ""; $("embalagem").value = ""; $("frete").value = "";
-        cotAtual = null;
+        cotAtual = null; neg = { tipo: "venda", desc: 0 };
         calcular(); salvar(); aplicarFil(false);
         window.scrollTo(0, 0); $("cli-nome").focus();
         toast("Pronto para uma nova peça.");
@@ -1745,7 +1765,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var CAMPOS_COT = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "margem", "potencia", "kwh", "deprec", "impostos"];
   var cotAtual = null; // id da cotação aberta/salva por último
   function fotoEntradas() {
-    var o = { modo: modo, desp: Number($("desp").value), filSel: $("fil-sel").value };
+    var o = { modo: modo, desp: Number($("desp").value), filSel: $("fil-sel").value, negTipo: neg.tipo, negDesc: neg.desc };
     CAMPOS_COT.forEach(function (k) { o[k] = $(k).value; });
     return o;
   }
@@ -1800,8 +1820,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var f = e.filSel && cache.filamentos[e.filSel];
     var q = Math.max(1, Math.round(parse(e.qtd)) || 1);
     var t = e.modo === "dec" ? parse(e.decimal) : parse(e.horas) + parse(e.minutos) / 60;
-    return conta(Object.assign(fixosAtuais(), { t: t, peso: parse(e.peso), q: q, m: parse(e.margem), emb: parse(e.embalagem),
-      kg: f ? Math.round(porKg(f) * 100) / 100 : parse(e.filamento) }));
+    var v = Object.assign(fixosAtuais(), { t: t, peso: parse(e.peso), q: q, m: parse(e.margem), emb: parse(e.embalagem),
+      kg: f ? Math.round(porKg(f) * 100) / 100 : parse(e.filamento) });
+    v.m = margemNeg(v, e.negTipo, +e.negDesc || 0, parse($("margemMin").value));
+    return conta(v);
   }
   function carregarCotacao(c) {
     var e = c.entradas || {};
@@ -1812,6 +1834,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("filamento").readOnly = false;
     aplicarFil(false);
     if (!$("fil-sel").value) $("filamento").value = e.filamento;
+    neg = { tipo: NOMES_NEG[e.negTipo] ? e.negTipo : "venda", desc: +e.negDesc || 0 };
     calcular(); salvar();
     cotAtual = c.id;
   }
@@ -1858,7 +1881,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
             carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click();
           } }) : null,
           el("button", { type: "button", text: c.cliente ? "Editar cliente" : "Pôr cliente", onclick: function () { editarCliente("cotacoes", c); } }),
-          el("button", { type: "button", text: c.orcNumero ? "PDF nº " + c.orcNumero : "Orçamento PDF", onclick: function () { abrirOrc(c.id); } }),
+          el("button", { type: "button", text: c.orcNumero ? "Nova versão do PDF (último " + c.orcNumero + ")" : "Orçamento PDF", onclick: function () { abrirOrc(c.id); } }),
           el("button", { type: "button", text: "Abrir no custo", onclick: function () { carregarCotacao(c); abrirAba("custo"); toast("Cotação carregada na aba Custo."); } }),
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () {
             confirmar("Excluir cotação?", c.nome + " × " + c.qtd + " · " + brl.format(vTotal + vFrete), [
@@ -1952,13 +1975,23 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     return jspdfCarregando;
   }
+  // Numeração própria: 2026-0024A, a letra é a versão do orçamento (A, B, C…)
   function proximoOrc(ano) {
     var n = ORC_INICIO[ano] || 0;
     Object.keys(cache.cotacoes).forEach(function (k) {
-      var m = /^(\d{4})-(\d+)$/.exec(cache.cotacoes[k].orcNumero || "");
-      if (m && +m[1] === ano) n = Math.max(n, +m[2]);
+      var x = cache.cotacoes[k];
+      (x.orcHist || []).concat(x.orcNumero ? [x.orcNumero] : []).forEach(function (num) {
+        var m = /^(\d{4})-(\d+)/.exec(num || "");
+        if (m && +m[1] === ano) n = Math.max(n, +m[2]);
+      });
     });
-    return ano + "-" + ("000" + (n + 1)).slice(-4);
+    return ano + "-" + ("000" + (n + 1)).slice(-4) + "A";
+  }
+  function proximaVersao(num) {
+    var m = /^(\d{4}-\d+)([A-Z]?)$/.exec(num || "");
+    if (!m) return null;
+    var l = m[2] || "A";
+    return m[1] + (l === "Z" ? "Z" : String.fromCharCode(l.charCodeAt(0) + 1));
   }
   function valoresCot(c) {
     var r = c.status !== "pedido" && precoCot(c);
@@ -1974,7 +2007,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var c = cache.cotacoes[id]; if (!c) return;
     orcBase = id; carregarJsPDF().catch(function () {});
     var o = c.orc || {}, hoje = hojeISO();
-    $("or-num").value = c.orcNumero || proximoOrc(+hoje.slice(0, 4));
+    $("or-num").value = (c.orcNumero && proximaVersao(c.orcNumero)) || proximoOrc(+hoje.slice(0, 4));
     $("or-data").value = o.data || hoje;
     $("or-emp").value = o.empresa || c.cliente || ""; $("or-contato").value = o.contato || "";
     $("or-doc").value = o.doc || ""; $("or-cidade").value = o.cidade || "";
@@ -2120,7 +2153,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var desc = {}; itens.forEach(function (i) { desc[i.c.id] = i.desc; });
     var orc = { data: d.data, empresa: d.empresa, contato: d.contato, doc: d.doc, cidade: d.cidade, telefone: d.telefone, envio: d.envio,
       frete: frete, pagamento: d.pagamento === textoPagamento(d.total) ? "" : d.pagamento, itens: itens.map(function (i) { return i.c.id; }), desc: desc };
-    gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orc: orc, retorno: Date.now() }));
+    gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orcHist: (c.orcHist || []).concat([d.numero]), orc: orc, retorno: Date.now() }));
     itens.forEach(function (i) { if (i.c.id !== c.id) gravar("cotacoes", i.c.id, Object.assign({}, i.c, { orcNumero: d.numero })); });
     fecharSheet("sh-orc"); toast("Orçamento " + d.numero + " gerado.");
   });
