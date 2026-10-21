@@ -168,6 +168,22 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .shead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .mini { border: 1px solid var(--line); background: transparent; color: var(--accent); border-radius: 999px; padding: 6px 12px; font: 600 13px var(--f-body); cursor: pointer; white-space: nowrap; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); text-align: center; }
+.graf { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; align-items: end; height: 150px; padding-top: 18px; }
+.graf button { position: relative; height: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; }
+.graf .b-ent, .graf .b-luc { position: absolute; bottom: 0; left: 18%; right: 18%; border-radius: 4px 4px 0 0; }
+.graf .b-ent { background: var(--accent-soft); outline: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.graf .b-luc { background: var(--accent); }
+.graf button[aria-pressed="true"] .b-ent { outline: 2px solid var(--accent); }
+.graf .vl { position: absolute; left: 50%; transform: translateX(-50%); font: 500 11px var(--f-num); color: var(--ink); white-space: nowrap; }
+.graf-x { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; border-top: 1px solid var(--line); padding-top: 6px; text-align: center; font: 500 11.5px var(--f-body); color: var(--muted); }
+.graf-x .sel { color: var(--ink); font-weight: 600; }
+.leg { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); }
+.leg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.rank { display: grid; gap: 8px; }
+.rank .r { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 14px; }
+.rank .r .bx { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--bg); overflow: hidden; }
+.rank .r .bx i { display: block; height: 100%; background: var(--accent); border-radius: 0 3px 3px 0; }
+.rank .r span:nth-child(2) { font-family: var(--f-num); white-space: nowrap; }
 .bar .k { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--bar-muted); }
 .bar .big { font: 700 36px/1.05 var(--f-display); font-variant-numeric: tabular-nums; }
 .bar .side { text-align: right; font-size: 12.5px; color: var(--bar-muted); font-variant-numeric: tabular-nums; }
@@ -407,6 +423,17 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="kpi"><span class="k2">Vendas · peças</span><b id="v-qtd">–</b></div>
       <div class="kpi"><span class="k2">Horas de impressão</span><b id="v-horas">–</b></div>
     </div>
+    <section aria-labelledby="h-graf">
+      <div class="shead"><h2 id="h-graf">Últimos 6 meses</h2>
+        <div class="leg" aria-hidden="true"><span><i style="background:var(--accent-soft);outline:1px solid var(--accent)"></i>Entradas</span><span><i style="background:var(--accent)"></i>Lucro</span></div></div>
+      <div class="graf" id="v-graf" role="group" aria-label="Entradas e lucro por mês. Toque num mês para ver os detalhes."></div>
+      <div class="graf-x" id="v-graf-x" aria-hidden="true"></div>
+      <p class="hint" id="v-graf-info"></p>
+    </section>
+    <section id="v-top-box" hidden>
+      <h2>Peças mais vendidas</h2>
+      <div id="v-top" class="rank"></div>
+    </section>
     <section id="v-cores-box" hidden>
       <h2>Consumo por filamento</h2>
       <div id="v-cores" class="lines"></div>
@@ -1190,6 +1217,23 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       ]));
     });
     $("v-cores-box").hidden = !lista.length;
+    renderGrafico(todos, atual);
+    var top = {};
+    lista.forEach(function (p) {
+      var k = (p.nome || "Peça sem nome").trim().toLowerCase();
+      top[k] = top[k] || { nome: (p.nome || "Peça sem nome").trim(), q: 0, v: 0 };
+      top[k].q += p.qtd || 0; top[k].v += p.valorPecas || 0;
+    });
+    var tops = Object.keys(top).map(function (k) { return top[k]; }).sort(function (a, b) { return b.q - a.q || b.v - a.v; }).slice(0, 5);
+    var tbox = $("v-top"); tbox.textContent = "";
+    tops.forEach(function (t) {
+      tbox.appendChild(el("div", { class: "r" }, [
+        el("span", { text: t.nome }),
+        el("span", { text: t.q + (t.q === 1 ? " peça · " : " peças · ") + brl.format(t.v) }),
+        el("span", { class: "bx", "aria-hidden": "true" }, [el("i", { style: "width:" + Math.max(2, t.q / tops[0].q * 100) + "%" })])
+      ]));
+    });
+    $("v-top-box").hidden = !tops.length;
     var box = $("v-lista"); box.textContent = "";
     lista.slice().reverse().forEach(function (p) {
       var l = (p.valorPecas || 0) - (p.custo || 0) - (p.impostos || 0);
@@ -1205,6 +1249,32 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       ]));
     });
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: pronto ? "Nenhuma venda neste período." : "Carregando vendas…" }));
+  }
+
+  // Gráfico: entradas (barra clara) e lucro (barra escura) dos últimos 6 meses; tocar num mês abre esse período
+  function renderGrafico(todos, atual) {
+    var hoje = new Date(), meses = [];
+    for (var i = 5; i >= 0; i--) meses.push(chaveMes(new Date(hoje.getFullYear(), hoje.getMonth() - i, 1).getTime()));
+    var dados = {}; meses.forEach(function (k) { dados[k] = { ent: 0, luc: 0, n: 0 }; });
+    todos.forEach(function (p) {
+      var d = dados[chaveMes(p.criado)]; if (!d) return;
+      d.ent += p.valorTotal || 0; d.luc += (p.valorPecas || 0) - (p.custo || 0) - (p.impostos || 0); d.n++;
+    });
+    var max = 0; meses.forEach(function (k) { max = Math.max(max, dados[k].ent); });
+    var box = $("v-graf"), eixo = $("v-graf-x"); box.textContent = ""; eixo.textContent = "";
+    meses.forEach(function (k) {
+      var d = dados[k], nomeMes = MESES[+k.split("-")[1] - 1];
+      var hE = max ? d.ent / max * 100 : 0, hL = max ? Math.max(0, d.luc) / max * 100 : 0;
+      var desc = nomeMes + ": entradas " + brl.format(d.ent) + ", lucro " + brl.format(d.luc) + ", " + d.n + (d.n === 1 ? " venda" : " vendas");
+      box.appendChild(el("button", { type: "button", title: desc, "aria-label": desc, "aria-pressed": k === atual, onclick: function () { $("v-mes").value = k; renderVendas(); } }, [
+        el("span", { class: "b-ent", style: "height:" + (d.ent > 0 ? Math.max(hE, 2) : 0) + "%" }),
+        el("span", { class: "b-luc", style: "height:" + (d.luc > 0 ? Math.max(hL, 2) : 0) + "%" }),
+        k === atual && d.ent > 0 ? el("span", { class: "vl", style: "bottom:calc(" + hE + "% + 4px)", text: brl.format(d.ent).replace(/,\d\d$/, "") }) : null
+      ]));
+      eixo.appendChild(el("span", { class: k === atual ? "sel" : "", text: nomeMes.slice(0, 3) }));
+    });
+    var a = dados[atual];
+    $("v-graf-info").textContent = a ? MESES[+atual.split("-")[1] - 1] + ": entradas " + brl.format(a.ent) + " · lucro " + brl.format(a.luc) + " · " + a.n + (a.n === 1 ? " venda" : " vendas") : "Toque num mês para ver os detalhes dele.";
   }
 
   /* ---------- Cotações ---------- */
