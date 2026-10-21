@@ -363,19 +363,19 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="ln total"><span>Total com frete</span><span id="r-tfrete"></span></div>
     </div>
     <div class="lucro" id="box-lucro">
-      <div class="slhead"><span class="lbl">Lucro do pedido</span><b id="l-valor"></b></div>
+      <div class="slhead"><span class="lbl" id="l-titulo">Lucro do pedido</span><b id="l-valor"></b></div>
       <div class="medidor" aria-hidden="true"><i id="l-bar"></i><span class="marca" id="l-marca" title="Lucro no preço mínimo"></span></div>
       <p class="hint" id="l-info"></p>
-      <div class="lines">
-        <div class="ln ok"><span>Preço favorável sugerido <span class="op" id="l-fav-op"></span></span><span id="l-fav"></span></div>
-        <div class="ln"><span>Preço mínimo <span class="op" id="l-min-op"></span></span><span id="l-min"></span></div>
-        <div class="ln sub"><span>Desconto máximo seguro</span><span id="l-max"></span></div>
-      </div>
       <div class="field" id="l-sim-box">
         <div class="slhead"><label for="l-desc">Simular desconto</label><b id="l-desc-v">0%</b></div>
         <input type="range" id="l-desc" min="0" max="20" step="1" value="0">
         <p class="hint" id="l-sim"></p>
         <button type="button" class="reset" id="l-aplicar" hidden>Aplicar desconto</button>
+      </div>
+      <div class="lines">
+        <div class="ln ok"><span>Preço favorável sugerido <span class="op" id="l-fav-op"></span></span><span id="l-fav"></span></div>
+        <div class="ln"><span>Preço mínimo <span class="op" id="l-min-op"></span></span><span id="l-min"></span></div>
+        <div class="ln sub"><span>Desconto máximo seguro</span><span id="l-max"></span></div>
       </div>
       <p class="hint">Lucro = valor das peças − custo de produção − impostos (frete fora). O desconto entra na margem, então cotação e venda já saem com o preço novo.</p>
     </div>
@@ -803,6 +803,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var rMin = conta(Object.assign({}, v, { m: mMin })), lMin = lucroDe(v, rMin);
     var rFav = conta(Object.assign({}, v, { m: (v.m + mMin) / 2 }));
     var folga = v.m > mMin && r.total > rMin.total;
+    $("l-titulo").textContent = "Lucro do pedido";
     $("l-valor").textContent = brl.format(lucro); $("l-valor").className = folga ? "" : "warn";
     $("l-bar").style.width = Math.max(0, Math.min(100, pct * 100)) + "%"; $("l-bar").className = folga ? "" : "warn";
     $("l-marca").style.left = Math.max(0, Math.min(100, lMin / rMin.total * 100)) + "%";
@@ -821,8 +822,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("l-desc-v").textContent = Math.round(d * 100) + "%";
     if (!d) { $("l-sim").textContent = "Arraste para ver o preço e o lucro com desconto. Máximo seguro: " + max + "%."; $("l-aplicar").hidden = true; return; }
     var parte = r.total - v.emb, novaM = parte > 0 ? v.m * (r.total * (1 - d) - v.emb) / parte : v.m;
-    var rD = conta(Object.assign({}, v, { m: novaM }));
-    $("l-sim").textContent = "Com " + Math.round(d * 100) + "% de desconto: total " + brl.format(rD.total) + " (cliente economiza " + brl.format(r.total - rD.total) + ") e lucro " + brl.format(lucroDe(v, rD)) + ".";
+    var rD = conta(Object.assign({}, v, { m: novaM })), lD = lucroDe(v, rD), pD = lD / rD.total;
+    // o medidor de lucro acompanha a barra de desconto
+    $("l-titulo").textContent = "Lucro com " + Math.round(d * 100) + "% de desconto";
+    $("l-valor").textContent = brl.format(lD);
+    $("l-bar").style.width = Math.max(0, Math.min(100, pD * 100)) + "%";
+    $("l-info").textContent = Math.round(pD * 100) + "% do valor fica de lucro (sem desconto: " + brl.format(lucro) + ", " + Math.round(pct * 100) + "%).";
+    $("l-sim").textContent = "Com " + Math.round(d * 100) + "% de desconto: total " + brl.format(rD.total) + " (cliente economiza " + brl.format(r.total - rD.total) + ") e lucro " + brl.format(lD) + ".";
     $("l-aplicar").hidden = false;
     $("l-aplicar").textContent = "Aplicar " + Math.round(d * 100) + "% de desconto (margem vira ×" + numN.format(Math.round(novaM * 100) / 100) + ")";
     calcLucro = novaM;
