@@ -1,7 +1,7 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-title" content="Baksa.3d"><style>[hidden]{display:none!important}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style></head><body>
 <title>Baksa.3d Custo de Peça</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="theme-color" content="#1d2a30">
+<meta name="theme-color" content="#1d1916">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9,31 +9,32 @@
 <style>
 /* Layout: one narrow column, inputs on top, a result "etiqueta" fixed to the bottom of the screen */
 :root {
-  --bg: #eef2f2;
+  /* cores do logo Baksa 3D: preto quente, cobre e pêssego */
+  --bg: #f5f1ed;
   --surface: #ffffff;
-  --ink: #17242a;
-  --muted: #5b6b70;
-  --line: #d3dcdd;
-  --accent: #0f6f74;
+  --ink: #1d1916;
+  --muted: #6e625a;
+  --line: #e2d8d0;
+  --accent: #9b5e47;
   --accent-ink: #ffffff;
-  --accent-soft: #dcecec;
-  --bar: #1d2a30;
-  --bar-ink: #f2f6f6;
-  --bar-muted: #a9b9bc;
-  --warn: #b4541a;
-  --warn-soft: #f6e3d6;
+  --accent-soft: #f4e5dc;
+  --bar: #1d1916;
+  --bar-ink: #f5efea;
+  --bar-muted: #c0aa9c;
+  --warn: #b3261e;
+  --warn-soft: #f8dedb;
   --f-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #11191c; --surface: #1a2529; --ink: #e5eded; --muted: #93a5a9; --line: #2c3a3f;
-  --accent: #4fb8b8; --accent-ink: #0d1719; --accent-soft: #1d3638;
-  --bar: #0a1113; --bar-ink: #eef4f4; --bar-muted: #8fa2a6; --warn: #f0965c; --warn-soft: #3a2619; color-scheme: dark } }
+  --bg: #14110f; --surface: #1e1a17; --ink: #efe8e3; --muted: #a59a92; --line: #352f2a;
+  --accent: #daaa91; --accent-ink: #1d1916; --accent-soft: #3b2a21;
+  --bar: #0c0a09; --bar-ink: #f5efea; --bar-muted: #a8968a; --warn: #f2867c; --warn-soft: #3d1d1a; color-scheme: dark } }
 :root[data-theme="dark"] {
-  --bg: #11191c; --surface: #1a2529; --ink: #e5eded; --muted: #93a5a9; --line: #2c3a3f;
-  --accent: #4fb8b8; --accent-ink: #0d1719; --accent-soft: #1d3638;
-  --bar: #0a1113; --bar-ink: #eef4f4; --bar-muted: #8fa2a6; --warn: #f0965c; --warn-soft: #3a2619; color-scheme: dark }
+  --bg: #14110f; --surface: #1e1a17; --ink: #efe8e3; --muted: #a59a92; --line: #352f2a;
+  --accent: #daaa91; --accent-ink: #1d1916; --accent-soft: #3b2a21;
+  --bar: #0c0a09; --bar-ink: #f5efea; --bar-muted: #a8968a; --warn: #f2867c; --warn-soft: #3d1d1a; color-scheme: dark }
 
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
@@ -101,7 +102,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .bar .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto auto; gap: 2px 14px; align-items: end; }
 .demo-btn { grid-row: span 2; align-self: center; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font: 600 13px var(--f-body); padding: 12px 12px; cursor: pointer; }
 .inp input.txt { font: 500 16px var(--f-body); }
-.sheet { position: fixed; inset: 0; z-index: 20; background: rgba(8,14,16,.55); display: flex; align-items: flex-end; justify-content: center; padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgba(20,15,12,.55); display: flex; align-items: flex-end; justify-content: center; padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .sheet .card { width: 100%; max-width: 480px; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 20px; display: grid; gap: 16px; border-top: 6px solid var(--accent); }
 .d-top { display: flex; justify-content: space-between; align-items: baseline; }
 .k2 { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--muted); display: block; }
@@ -2082,7 +2083,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   });
   function montarPDF(d) {
     var J = window.jspdf.jsPDF, doc = new J({ unit: "mm", format: "a4" });
-    var AZ = [29, 91, 121], X = 14, W = 182, y;
+    var AZ = [155, 94, 71], X = 14, W = 182, y;
     function barra(x, yy, w, txt, cor) {
       doc.setFillColor.apply(doc, cor || AZ); doc.rect(x, yy, w, 6, "F");
       doc.setTextColor(cor ? 30 : 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
@@ -2145,7 +2146,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     doc.rect(X, y + 6, 110, Math.max(22, pag.length * 4.2 + 6));
     y += Math.max(32, pag.length * 4.2 + 14) + 10;
     doc.setFontSize(9); doc.text("Se você tiver alguma dúvida sobre este orçamento, entre em contato: (11) 99196-2311 · gilberto.baksa@gmail.com", X + W / 2, y, { align: "center" });
-    doc.setFillColor(190, 225, 245); doc.rect(X, y + 5, W, 4, "F");
+    doc.setFillColor(244, 229, 220); doc.rect(X, y + 5, W, 4, "F");
     return doc;
   }
   $("or-form").addEventListener("submit", function (e) {
