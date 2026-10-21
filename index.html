@@ -146,6 +146,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .acts button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 8px 12px; font: 500 13px var(--f-body); cursor: pointer; }
 .acts button.del { color: var(--warn); }
+.item .meta.warn { color: var(--warn); }
 .empty { text-align: center; color: var(--muted); padding: 24px 12px; border: 1px dashed var(--line); border-radius: 10px; font-size: 14px; }
 .center { text-align: center; }
 .err, .warn { color: var(--warn); }
@@ -380,7 +381,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="selwrap"><select id="p-ordem">
         <option value="chegada">Ordem de chegada</option>
         <option value="prazo">Prazo de entrega (mais urgente primeiro)</option>
-        <option value="etapa">Etapa (na fila, imprimindo, pronto)</option>
+        <option value="etapa">Etapa (aguardando, imprimindo, pronto)</option>
         <option value="receber">A receber primeiro</option>
         <option value="valor">Maior valor</option>
         <option value="cliente">Cliente (A a Z)</option>
@@ -891,16 +892,19 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function confirmar(titulo, texto, botoes, campo) {
     $("c-titulo").textContent = titulo; $("c-texto").textContent = texto;
     $("c-campo-box").hidden = !campo;
-    if (campo) { $("c-campo-lbl").textContent = campo.label; $("c-campo-u").textContent = campo.unidade || ""; $("c-campo").value = campo.valor || ""; }
+    if (campo) {
+      $("c-campo").type = campo.tipo || "text"; $("c-campo").setAttribute("inputmode", campo.tipo ? "none" : "decimal");
+      $("c-campo-lbl").textContent = campo.label; $("c-campo-u").textContent = campo.unidade || ""; $("c-campo").value = campo.valor || "";
+    }
     var box = $("c-botoes"); box.textContent = "";
     botoes.concat([{ texto: "Cancelar" }]).forEach(function (b) {
       box.appendChild(el("button", { type: "button", class: b.classe || "", text: b.texto, onclick: function () {
-        var v = parse($("c-campo").value);
-        fecharSheet("sh-conf"); if (b.acao) b.acao(v);
+        var raw = $("c-campo").value, v = parse(raw);
+        fecharSheet("sh-conf"); if (b.acao) b.acao(v, raw);
       } }));
     });
     abrirSheet("sh-conf");
-    if (campo) setTimeout(function () { $("c-campo").focus(); $("c-campo").select(); }, 50);
+    if (campo && !campo.tipo) setTimeout(function () { $("c-campo").focus(); $("c-campo").select(); }, 50);
   }
 
   /* ---------- Estoque ---------- */
@@ -1083,7 +1087,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
   /* ---------- Pedidos (ordem de chegada) ---------- */
   var STATUS = [
-    { id: "fila", nome: "Na fila" }, { id: "produzindo", nome: "Imprimindo" },
+    { id: "fila", nome: "Aguardando" }, { id: "produzindo", nome: "Imprimindo" },
     { id: "pronto", nome: "Pronto" }, { id: "entregue", nome: "Entregue" }
   ];
   function nomeStatus(id) { for (var i = 0; i < STATUS.length; i++) if (STATUS[i].id === id) return STATUS[i].nome; return id; }
@@ -1113,6 +1117,27 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function listaPed() {
     return Object.keys(cache.pedidos).map(function (k) { return cache.pedidos[k]; })
       .sort(function (a, b) { return (a.criado || 0) - (b.criado || 0); });
+  }
+  // Quantos dias faltam (negativo = atrasado) entre hoje e uma data AAAA-MM-DD
+  function diasAte(iso) { var a = iso.split("-"), h = hojeISO().split("-"); return Math.round((Date.UTC(+a[0], a[1] - 1, +a[2]) - Date.UTC(+h[0], h[1] - 1, +h[2])) / 864e5); }
+  function textoPrazo(p) {
+    if (!p.prazo) return "Sem prazo de entrega";
+    var t = "Entrega " + prazoBR(p.prazo);
+    if (p.status === "entregue") {
+      if (!p.em_entregue) return t;
+      var ent = new Date(p.em_entregue); ent.setMinutes(ent.getMinutes() - ent.getTimezoneOffset());
+      var atraso = diasAte(ent.toISOString().slice(0, 10)) - diasAte(p.prazo);
+      return "Entregue " + dataBR(p.em_entregue) + (atraso > 0 ? " · " + atraso + (atraso === 1 ? " dia" : " dias") + " depois do prazo" : " · no prazo");
+    }
+    var d = diasAte(p.prazo);
+    return t + (d < 0 ? " · atrasado " + -d + (d === -1 ? " dia" : " dias") : d === 0 ? " · é hoje" : d === 1 ? " · amanhã" : " · faltam " + d + " dias");
+  }
+  function editarPrazo(p) {
+    confirmar("Prazo de entrega", "Pedido nº " + p.numero + " · " + (p.cliente || "Sem cliente"), [
+      { texto: "Salvar prazo", classe: "primary", acao: function (v, raw) {
+        gravar("pedidos", p.id, Object.assign({}, p, { prazo: raw || "" })).then(function () { toast(raw ? "Prazo: " + prazoBR(raw) + "." : "Prazo removido."); });
+      } }
+    ], { label: "Data de entrega (deixe vazio para tirar o prazo)", tipo: "date", valor: p.prazo || "" });
   }
   function mudarStatus(p, st) { gravar("pedidos", p.id, Object.assign({}, p, { status: st, ["em_" + st]: Date.now() })); }
   function excluirPed(p) {
@@ -1156,7 +1181,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           el("div", null, [
             el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + (p.filamento ? " · " + p.filamento : "") }),
-            el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) + (p.prazo ? " · prazo " + prazoBR(p.prazo) : "") }),
+            el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) }),
+            el("div", { class: "meta" + (atrasado ? " warn" : ""), text: textoPrazo(p) }),
             (p.telefone || p.whatsapp || p.email) ? el("div", { class: "meta", text: [p.telefone ? "Tel. " + p.telefone : "", p.whatsapp && p.whatsapp !== p.telefone ? "WhatsApp " + p.whatsapp : (p.whatsapp ? "(WhatsApp)" : ""), p.email].filter(Boolean).join(" · ") }) : null
           ]),
           el("div", { class: "val" }, [brl.format(p.valorTotal), el("div", { class: "meta", text: p.frete ? "frete " + brl.format(p.frete) : "sem frete" })])
@@ -1169,6 +1195,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         el("div", { class: "acts" }, [
           prox ? el("button", { type: "button", class: "go", text: "Marcar " + prox.nome.toLowerCase(), onclick: function () { mudarStatus(p, prox.id); } }) : null,
           idx > 0 ? el("button", { type: "button", text: "Voltar etapa", onclick: function () { mudarStatus(p, STATUS[idx - 1].id); } }) : null,
+          p.status !== "entregue" ? el("button", { type: "button", text: p.prazo ? "Mudar prazo" : "Pôr prazo", onclick: function () { editarPrazo(p); } }) : null,
           el("button", { type: "button", text: p.pago ? "Marcar a receber" : "Marcar pago", onclick: function () { gravar("pedidos", p.id, Object.assign({}, p, { pago: !p.pago })); } }),
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () { excluirPed(p); } })
         ])
@@ -1176,7 +1203,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: !pronto ? "Carregando pedidos…" : verEntregues ? "Nenhum pedido entregue ainda." : "Nenhum pedido em aberto. Registre uma venda na aba Custo." }));
     var atras = abertos.filter(function (p) { return p.prazo && p.prazo < hoje; }).length;
-    $("p-resumo").textContent = abertos.length ? abertos.length + (abertos.length === 1 ? " pedido em aberto" : " pedidos em aberto") + (atras ? " · " + atras + " atrasado" + (atras > 1 ? "s" : "") : "") : "";
+    var etapas = STATUS.slice(0, 3).map(function (s) {
+      var n = abertos.filter(function (p) { return (p.status || "fila") === s.id; }).length;
+      return n ? n + " " + s.nome.toLowerCase() : "";
+    }).filter(Boolean).join(" · ");
+    $("p-resumo").textContent = abertos.length ? abertos.length + (abertos.length === 1 ? " pedido em aberto" : " pedidos em aberto") + " (" + etapas + ")" + (atras ? " · " + atras + " atrasado" + (atras > 1 ? "s" : "") : "") : "";
   }
 
   /* ---------- Vendas (resumo financeiro) ---------- */
