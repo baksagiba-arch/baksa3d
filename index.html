@@ -146,6 +146,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .acts button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 8px 12px; font: 500 13px var(--f-body); cursor: pointer; }
 .acts button.del { color: var(--warn); }
+.acts a { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 8px 12px; font: 600 13px var(--f-body); text-decoration: none; }
 .item .meta.warn { color: var(--warn); }
 .empty { text-align: center; color: var(--muted); padding: 24px 12px; border: 1px dashed var(--line); border-radius: 10px; font-size: 14px; }
 .center { text-align: center; }
@@ -202,6 +203,9 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .hj .meta { color: var(--muted); font-size: 12.5px; }
 .hj .meta.warn { color: var(--warn); }
 .tabs button .ponto { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--surface); }
+.foto { flex: none; width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); background: var(--bg); padding: 0; cursor: zoom-in; overflow: hidden; }
+.foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.foto-g { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 10px; background: var(--bg); }
 .linha-btn { display: flex; flex-wrap: wrap; gap: 8px; }
 .bar .k { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--bar-muted); }
 .bar .big { font: 700 36px/1.05 var(--f-display); font-variant-numeric: tabular-nums; }
@@ -216,6 +220,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="brand" aria-label="Baksa.3d"><span class="layers" aria-hidden="true"></span><span class="wm">Baksa<span class="dot">.</span><span class="d3">3d</span></span></div>
   </header>
 
+  <button type="button" class="alerta info" id="alerta-cot" hidden><span class="ic" aria-hidden="true">?</span><span id="alerta-cot-txt"></span></button>
   <button type="button" class="alerta info" id="alerta-ped" hidden><span class="ic" aria-hidden="true">✓</span><span id="alerta-ped-txt"></span></button>
   <button type="button" class="alerta" id="alerta-est" hidden><span class="ic" aria-hidden="true">!</span><span id="alerta-txt"></span></button>
 
@@ -384,6 +389,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="kpi"><span class="k2">Cotações no mês</span><b id="q-mes">–</b></div>
       <div class="kpi"><span class="k2">Viraram pedido</span><b id="q-conv">–</b></div>
     </div>
+    <section id="q-ret-box" aria-labelledby="h-ret" hidden>
+      <h2 id="h-ret">Esperando resposta do cliente</h2>
+      <p class="hint">Cotações com nome ou telefone do cliente que ainda não viraram venda. Dê um retorno e marque o que aconteceu.</p>
+      <div id="q-ret" class="hj-g"></div>
+    </section>
     <div class="field">
       <label for="q-busca">Buscar</label>
       <div class="inp"><input id="q-busca" class="txt" type="search" autocomplete="off" placeholder="Nome da peça ou cliente"></div>
@@ -540,6 +550,15 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="inp"><input id="cat-busca" class="txt" type="search" autocomplete="off" placeholder="Buscar peça" aria-label="Buscar peça"></div>
     <div id="cat-lista" class="lista"></div>
     <div class="vbtns"><button type="button" id="cat-fechar">Fechar</button></div>
+    <input type="file" id="cat-foto-arq" accept="image/*" hidden>
+  </div>
+</div>
+
+<div class="sheet" id="sh-foto" hidden role="dialog" aria-modal="true" aria-labelledby="ft-nome">
+  <div class="card">
+    <h3 id="ft-nome"></h3>
+    <img id="ft-img" class="foto-g" alt="">
+    <div class="vbtns"><button type="button" id="ft-fechar">Fechar</button></div>
   </div>
 </div>
 
@@ -954,11 +973,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function porKg(f) { return f.pesoCarretel > 0 ? f.valorCarretel / f.pesoCarretel * 1000 : 0; }
   function abrirSheet(id) { $(id).hidden = false; }
   function fecharSheet(id) { $(id).hidden = true; }
-  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag"].forEach(function (id) {
+  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) fecharSheet(id); });
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag"].forEach(fecharSheet);
+    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto"].forEach(fecharSheet);
   });
 
   // confirmação dentro da página (o app não usa janelas do navegador)
@@ -1048,7 +1067,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   $("alerta-ped").addEventListener("click", function () { verEntregues = false; abrirAba("pedidos"); });
   function renderAlerta() {
-    renderAlertaPed();
+    renderAlertaPed(); renderAlertaCot();
     var baixos = listaFil().filter(function (f) { return f.gramas < minimo(f); });
     var naAba = !$("tab-estoque").hidden;
     $("alerta-est").hidden = !baixos.length || naAba;
@@ -1602,10 +1621,22 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     c.cliente = p.cliente || c.cliente;
     var atual = cotAtual && cache.cotacoes[cotAtual];
     if (atual && atual.assinatura === c.assinatura) {
-      return gravar("cotacoes", cotAtual, Object.assign({}, atual, { status: "pedido", pedidoNumero: p.numero, cliente: p.cliente }));
+      return gravar("cotacoes", cotAtual, Object.assign({}, atual, { status: "pedido", pedidoNumero: p.numero, cliente: p.cliente })).then(function () { return fecharIguais(atual, p.numero); });
     }
     var id = novoId(); cotAtual = id;
-    return gravar("cotacoes", id, c);
+    return gravar("cotacoes", id, c).then(function () {
+      // a cotação que foi aberta para virar esta venda também fecha, mesmo se algo mudou no caminho
+      if (atual && (atual.status || "aberta") === "aberta") return gravar("cotacoes", atual.id, Object.assign({}, atual, { status: "pedido", pedidoNumero: p.numero })).then(function () { return fecharIguais(atual, p.numero); });
+    }).then(function () { return fecharIguais(c, p.numero); });
+  }
+  // Outras cotações abertas da mesma peça para o mesmo cliente também viram este pedido
+  function fecharIguais(c, numero) {
+    var k = chaveCot(c), ps = [];
+    Object.keys(cache.cotacoes).forEach(function (id) {
+      var x = cache.cotacoes[id];
+      if ((x.status || "aberta") === "aberta" && chaveCot(x) === k) ps.push(gravar("cotacoes", id, Object.assign({}, x, { status: "pedido", pedidoNumero: numero })));
+    });
+    return Promise.all(ps);
   }
   // Preço de uma cotação aberta pelas regras e custos de agora (filamento do estoque com o preço atual)
   var FIXOS = ["potencia", "kwh", "deprec", "impostos"];
@@ -1635,6 +1666,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("q-todas").addEventListener("click", function () { cotTodas = true; renderCotacoes(); });
   $("q-busca").addEventListener("input", function () { renderCotacoes(); });
   function renderCotacoes() {
+    renderRetorno();
     $("q-abertas").setAttribute("aria-pressed", !cotTodas);
     $("q-todas").setAttribute("aria-pressed", cotTodas);
     var todas = Object.keys(cache.cotacoes).map(function (k) { return cache.cotacoes[k]; })
@@ -1645,13 +1677,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("q-conv").textContent = doMes.length ? conv + " (" + Math.round(conv / doMes.length * 100) + "%)" : "0";
     var busca = $("q-busca").value.trim().toLowerCase();
     var lista = todas.filter(function (c) {
-      if (!cotTodas && c.status === "pedido") return false;
+      if (!cotTodas && (c.status === "pedido" || c.status === "perdida")) return false;
       if (busca && ((c.nome || "") + " " + (c.cliente || "")).toLowerCase().indexOf(busca) < 0) return false;
       return true;
     });
     var box = $("q-lista"); box.textContent = "";
     lista.forEach(function (c) {
-      var virou = c.status === "pedido";
+      var virou = c.status === "pedido", perdida = c.status === "perdida";
       var r = !virou && precoCot(c);
       var vTotal = r ? r.total : c.valorTotal || 0, vUnit = r ? r.final : c.valorUnit || 0;
       var vFrete = c.entradas ? parse(c.entradas.frete) : c.frete || 0;
@@ -1665,9 +1697,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           ]),
           el("div", { class: "val" }, [brl.format(vTotal + vFrete), el("div", { class: "meta", text: brl.format(vUnit) + " cada" + (vFrete > 0 ? " · frete " + brl.format(vFrete) : "") })])
         ]),
-        el("div", { class: "acts" }, [el("span", { class: "pill", text: virou ? "Virou pedido nº " + c.pedidoNumero : "Em aberto" })]),
+        el("div", { class: "acts" }, [el("span", { class: "pill" + (perdida ? " warn" : ""), text: virou ? "Virou pedido nº " + c.pedidoNumero : perdida ? "Não fechou" : "Em aberto" })]),
         el("div", { class: "acts" }, [
-          !virou ? el("button", { type: "button", class: "go", text: "Transformar em pedido", onclick: function () {
+          perdida ? el("button", { type: "button", text: "Reabrir", onclick: function () { marcarCot(c, { status: "aberta", retorno: Date.now() }, "Cotação reaberta."); } }) : null,
+          !virou && !perdida ? el("button", { type: "button", class: "go", text: "Transformar em pedido", onclick: function () {
             carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click();
           } }) : null,
           el("button", { type: "button", text: "Abrir no custo", onclick: function () { carregarCotacao(c); abrirAba("custo"); toast("Cotação carregada na aba Custo."); } }),
@@ -1682,6 +1715,71 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: !pronto ? "Carregando cotações…" : busca ? "Nenhuma cotação encontrada." : cotTodas ? "Nenhuma cotação salva ainda. Na aba Custo, toque em Salvar cotação." : "Nenhuma cotação em aberto." }));
   }
 
+  /* ---------- Retorno das cotações: quem ainda não respondeu ---------- */
+  function chaveCot(c) { return ((c.cliente || c.telefone || c.whatsapp || "") + "|" + (c.nome || "")).toLowerCase().trim(); }
+  function isoDe(ms) { var d = new Date(ms); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+  function diasDesde(ms) { return -diasAte(isoDe(ms)); }
+  // A mesma peça para o mesmo cliente pode ter várias cotações salvas: vale a mais recente
+  function cotPendentes() {
+    var vistas = {};
+    return Object.keys(cache.cotacoes).map(function (k) { return cache.cotacoes[k]; })
+      .filter(function (c) { return (c.status || "aberta") === "aberta" && (c.cliente || c.telefone || c.whatsapp); })
+      .sort(function (a, b) { return (b.criado || 0) - (a.criado || 0); })
+      .filter(function (c) { var k = chaveCot(c); if (vistas[k]) return false; vistas[k] = 1; return true; })
+      .sort(function (a, b) { return (a.retorno || a.criado || 0) - (b.retorno || b.criado || 0); });
+  }
+  function marcarCot(c, mudar, msg) {
+    var k = chaveCot(c), ps = [];
+    Object.keys(cache.cotacoes).forEach(function (id) {
+      var x = cache.cotacoes[id];
+      if (x.id === c.id || ((x.status || "aberta") === (c.status || "aberta") && chaveCot(x) === k)) ps.push(gravar("cotacoes", id, Object.assign({}, x, mudar)));
+    });
+    return Promise.all(ps).then(function () { if (msg) toast(msg); });
+  }
+  function linkWhats(c, valor) {
+    var n = String(c.whatsapp || c.telefone || "").replace(/\D/g, "");
+    if (n.length < 10) return "";
+    if (n.length <= 11) n = "55" + n;
+    var txt = "Olá" + (c.cliente ? " " + c.cliente.split(" ")[0] : "") + "! Aqui é da Baksa.3d. Passando para saber se você decidiu sobre o orçamento de " + c.nome + " (" + c.qtd + (c.qtd === 1 ? " peça" : " peças") + ", " + brl.format(valor) + "). Posso ajudar em alguma coisa?";
+    return "https://wa.me/" + n + "?text=" + encodeURIComponent(txt);
+  }
+  function renderRetorno() {
+    var lista = cotPendentes(), box = $("q-ret"); box.textContent = "";
+    $("q-ret-box").hidden = !lista.length;
+    lista.forEach(function (c) {
+      var r = precoCot(c), valor = (r ? r.total : c.valorTotal || 0) + (c.entradas ? parse(c.entradas.frete) : c.frete || 0);
+      var d = diasDesde(c.retorno || c.criado), wa = linkWhats(c, valor);
+      var quando = (c.retorno ? "último contato " : "cotado ") + (d === 0 ? "hoje" : d === 1 ? "ontem" : "há " + d + " dias");
+      box.appendChild(el("div", { class: "hj", style: "flex-wrap:wrap" }, [
+        el("div", { style: "flex:1 1 200px" }, [
+          el("b", { text: (c.cliente || c.telefone || c.whatsapp) + " · " + c.nome + " × " + c.qtd }),
+          el("div", { class: "meta", text: brl.format(valor) + " · cotado em " + dataBR(c.criado) }),
+          el("div", { class: "meta" + (d >= 3 ? " warn" : ""), text: quando + (d >= 3 ? " · vale chamar o cliente" : "") })
+        ]),
+        el("div", { class: "acts", style: "flex:1 1 100%" }, [
+          wa ? el("a", { href: wa, target: "_blank", rel: "noopener", text: "Chamar no WhatsApp", onclick: function () { marcarCot(c, { retorno: Date.now() }); } }) : null,
+          el("button", { type: "button", text: "Já falei", onclick: function () { marcarCot(c, { retorno: Date.now() }, "Contato anotado."); } }),
+          el("button", { type: "button", text: "Virou venda", onclick: function () { carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click(); } }),
+          el("button", { type: "button", class: "del", text: "Não fechou", onclick: function () {
+            confirmar("O cliente não fechou?", (c.cliente || "Cliente") + " · " + c.nome + ". A cotação sai da lista de espera (fica em Todas, com a opção Reabrir).", [
+              { texto: "Não fechou", classe: "primary", acao: function () { marcarCot(c, { status: "perdida", fechada: Date.now() }, "Marcada como não fechou."); } }
+            ]);
+          } })
+        ])
+      ]));
+    });
+  }
+  function renderAlertaCot() {
+    var lista = cotPendentes(), velhas = lista.filter(function (c) { return diasDesde(c.retorno || c.criado) >= 3; }).length;
+    $("alerta-cot").hidden = !lista.length || !$("tab-cotacoes").hidden;
+    $("t-cotacoes").textContent = "Cotações";
+    if (velhas) $("t-cotacoes").appendChild(el("span", { class: "ponto", "aria-label": "cotações sem resposta" }));
+    var box = $("alerta-cot-txt"); box.textContent = "";
+    box.appendChild(el("b", { text: "Cotações: " }));
+    box.appendChild(document.createTextNode(lista.length + (lista.length === 1 ? " esperando resposta do cliente" : " esperando resposta dos clientes") + (velhas ? " (" + velhas + " há 3 dias ou mais)" : "") + ". Toque para ver."));
+  }
+  $("alerta-cot").addEventListener("click", function () { abrirAba("cotacoes"); });
+
   /* ---------- Catálogo de peças salvas ---------- */
   var CAMPOS_CAT = ["nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem"];
   function listaCat() {
@@ -1695,6 +1793,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var u = ultimo, f = filAtual();
     var item = { nome: nome, criado: Date.now(), entradas: e, qtd: u.q, pesoTotal: u.peso, tempoTotal: u.tempo,
       filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "" };
+    if (id && cache.catalogo[id] && cache.catalogo[id].foto) item.foto = cache.catalogo[id].foto;
     return gravar("catalogo", id || novoId(), item).then(function () { toast("“" + nome + "” salva no catálogo."); });
   }
   $("cat-salvar").addEventListener("click", function () {
@@ -1721,7 +1820,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       var q = Math.max(1, Math.round(parse(e.qtd)) || 1);
       box.appendChild(el("div", { class: "item" }, [
         el("div", { class: "top" }, [
-          (f || c.hex) ? el("span", { class: "spool", style: "--sw:" + (f ? f.hex || "#888" : c.hex), "aria-hidden": "true" }) : null,
+          c.foto ? el("button", { type: "button", class: "foto", "aria-label": "Ver foto de " + c.nome, onclick: function () { verFoto(c); } }, [el("img", { src: c.foto, alt: "" })])
+            : (f || c.hex) ? el("span", { class: "spool", style: "--sw:" + (f ? f.hex || "#888" : c.hex), "aria-hidden": "true" }) : null,
           el("div", null, [
             el("h4", { text: c.nome }),
             el("div", { class: "meta", text: (f ? filLabel(f) : c.filamento ? c.filamento + " (fora do estoque)" : "Preço manual") }),
@@ -1731,6 +1831,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         ]),
         el("div", { class: "acts" }, [
           el("button", { type: "button", class: "go", text: "Usar", onclick: function () { usarCat(c); } }),
+          el("button", { type: "button", text: c.foto ? "Trocar foto" : "Pôr foto", onclick: function () { fotoPara = c.id; $("cat-foto-arq").click(); } }),
+          c.foto ? el("button", { type: "button", text: "Tirar foto", onclick: function () {
+            confirmar("Tirar a foto?", "A foto de " + c.nome + " sai do catálogo. A peça continua.", [
+              { texto: "Tirar a foto", classe: "danger", acao: function () { var d = Object.assign({}, c); delete d.foto; gravar("catalogo", c.id, d).then(function () { toast("Foto retirada."); }); } }
+            ]);
+          } }) : null,
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () {
             confirmar("Tirar do catálogo?", c.nome + " sai do catálogo. Cotações e pedidos já feitos continuam.", [
               { texto: "Excluir", classe: "danger", acao: function () { apagar("catalogo", c.id).then(function () { toast("Peça tirada do catálogo."); abrirSheet("sh-cat"); }); } }
@@ -1741,6 +1847,39 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: busca ? "Nenhuma peça encontrada." : "O catálogo está vazio. Preencha uma peça na aba Custo e toque em “Salvar no catálogo”." }));
   }
+  // Foto da peça: reduzida no próprio celular para caber numa célula da planilha (limite de 50 mil caracteres)
+  var fotoPara = null;
+  function reduzirFoto(arq) {
+    return new Promise(function (ok, erro) {
+      var img = new Image(), url = URL.createObjectURL(arq);
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var lado = 480, q = 0.75, dado = "";
+        for (var i = 0; i < 8; i++) {
+          var esc = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+          var cv = document.createElement("canvas");
+          cv.width = Math.max(1, Math.round(img.naturalWidth * esc)); cv.height = Math.max(1, Math.round(img.naturalHeight * esc));
+          var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height);
+          dado = cv.toDataURL("image/jpeg", q);
+          if (dado.length < 40000) return ok(dado);
+          if (q > 0.5) q -= 0.1; else lado = Math.round(lado * 0.8);
+        }
+        erro(new Error("grande"));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); erro(new Error("formato")); };
+      img.src = url;
+    });
+  }
+  $("cat-foto-arq").addEventListener("change", function () {
+    var arq = this.files && this.files[0]; this.value = "";
+    var c = fotoPara && cache.catalogo[fotoPara]; if (!arq || !c) return;
+    toast("Preparando a foto…");
+    reduzirFoto(arq).then(function (foto) {
+      return gravar("catalogo", c.id, Object.assign({}, cache.catalogo[c.id] || c, { foto: foto })).then(function () { toast("Foto salva."); });
+    }, function () { toast("Não deu para usar esta foto. Tente outra."); });
+  });
+  function verFoto(c) { $("ft-nome").textContent = c.nome; $("ft-img").src = c.foto; $("ft-img").alt = "Foto de " + c.nome; abrirSheet("sh-foto"); }
+  $("ft-fechar").addEventListener("click", function () { fecharSheet("sh-foto"); });
   $("cat-abrir").addEventListener("click", function () { $("cat-busca").value = ""; renderCatalogo(); abrirSheet("sh-cat"); });
   $("cat-busca").addEventListener("input", renderCatalogo);
   $("cat-fechar").addEventListener("click", function () { fecharSheet("sh-cat"); });
