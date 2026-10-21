@@ -378,7 +378,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         <button type="button" role="radio" data-neg="desconto"><span class="k2">Desconto</span><b id="o-desconto"></b><small id="o-desconto-s"></small></button>
       </div>
       <div class="field" id="l-sim-box" hidden>
-        <div class="slhead"><label for="l-desc">Desconto combinado</label><b id="l-desc-v">0%</b></div>
+        <div class="slhead"><label for="l-desc">Arraste para o desconto combinado</label><b id="l-desc-v">0%</b></div>
         <input type="range" id="l-desc" min="0" max="20" step="1" value="0">
         <p class="hint" id="l-sim"></p>
       </div>
@@ -874,11 +874,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       b.setAttribute("aria-checked", t === ativo);
     });
     // desconto escolhido à mão
-    $("l-sim-box").hidden = !(folga && neg.tipo === "desconto" && max >= 1);
+    // a barra fica sempre à vista; mexer nela escolhe "Desconto" e o valor dela é o que fecha
+    $("l-sim-box").hidden = !(folga && max >= 1);
     $("l-desc").max = Math.max(1, max);
     if (neg.desc > max) neg.desc = max;
-    $("l-desc").value = neg.desc;
-    $("l-desc-v").textContent = neg.desc + "%";
+    var pAtual = neg.tipo === "desconto" ? neg.desc : Math.max(0, Math.min(max, Math.round((1 - r.total / rBase.total) * 100)));
+    $("l-desc").value = pAtual;
+    $("l-desc-v").textContent = pAtual + "%";
     $("l-sim").textContent = "Total " + brl.format(r.total) + " · o cliente economiza " + brl.format(rBase.total - r.total) + ". Máximo seguro: " + max + "%.";
     // medidor do lucro no preço escolhido
     var lucro = lucroDe(v, r), pct = lucro / r.total, lBase = lucroDe(vBase, rBase), cheio = v.m === vBase.m;
@@ -896,7 +898,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       calcular(); salvar();
     });
   });
-  $("l-desc").addEventListener("input", function () { neg.desc = Number(this.value); calcular(); salvar(); });
+  $("l-desc").addEventListener("input", function () { neg.tipo = "desconto"; neg.desc = Number(this.value); calcular(); salvar(); });
 
   function setMargem(v) {
     v = Math.max(0, Math.round(v * 100) / 100);
