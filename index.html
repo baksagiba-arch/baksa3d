@@ -1987,6 +1987,15 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     return ano + "-" + ("000" + (n + 1)).slice(-4) + "A";
   }
+  // Mesmo cliente com a mesma peça é nova versão (letra); cliente ou peça diferente ganha número novo
+  function ultimoOrcIgual(c) {
+    var k = chaveCot(c), ult = c.orcNumero || "";
+    Object.keys(cache.cotacoes).forEach(function (id) {
+      var x = cache.cotacoes[id];
+      if (x.orcNumero && chaveCot(x) === k && (c.cliente || c.telefone || c.whatsapp) && x.orcNumero > ult) ult = x.orcNumero;
+    });
+    return ult;
+  }
   function proximaVersao(num) {
     var m = /^(\d{4}-\d+)([A-Z]?)$/.exec(num || "");
     if (!m) return null;
@@ -2007,7 +2016,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var c = cache.cotacoes[id]; if (!c) return;
     orcBase = id; carregarJsPDF().catch(function () {});
     var o = c.orc || {}, hoje = hojeISO();
-    $("or-num").value = (c.orcNumero && proximaVersao(c.orcNumero)) || proximoOrc(+hoje.slice(0, 4));
+    $("or-num").value = proximaVersao(ultimoOrcIgual(c)) || proximoOrc(+hoje.slice(0, 4));
     $("or-data").value = o.data || hoje;
     $("or-emp").value = o.empresa || c.cliente || ""; $("or-contato").value = o.contato || "";
     $("or-doc").value = o.doc || ""; $("or-cidade").value = o.cidade || "";
