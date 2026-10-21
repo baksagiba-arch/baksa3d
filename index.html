@@ -369,6 +369,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="lines">
         <div class="ln ok"><span>Preço favorável sugerido <span class="op" id="l-fav-op"></span></span><span id="l-fav"></span></div>
         <div class="ln"><span>Preço mínimo <span class="op" id="l-min-op"></span></span><span id="l-min"></span></div>
+        <div class="ln sub"><span>Desconto máximo seguro</span><span id="l-max"></span></div>
       </div>
       <div class="field" id="l-sim-box">
         <div class="slhead"><label for="l-desc">Simular desconto</label><b id="l-desc-v">0%</b></div>
@@ -402,7 +403,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           <div class="inp"><span class="pre">×</span><input id="margemMin" inputmode="decimal"></div>
           <p class="hint">O preço mínimo usa esta margem. Abaixo dela o app avisa que o desconto aperta demais.</p></div>
         <p class="hint">Esses valores ficam salvos neste celular.</p>
-        <button type="button" class="reset" id="reset">Voltar aos valores da planilha (margem ×5, desperdício 30%)</button>
+        <button type="button" class="reset" id="reset">Voltar aos valores da planilha (margem ×5, mínima ×2, desperdício 30%)</button>
       </div>
     </details>
   </section>
@@ -675,7 +676,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
 <script>
 (function () {
-  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, margem: 5, impostos: 15, margemMin: 3 };
+  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, margem: 5, impostos: 15, margemMin: 2 };
   var DESP_PADRAO = 30;
   var KEY = "custo3d.v1";
   var $ = function (id) { return document.getElementById(id); };
@@ -710,6 +711,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       $(k).value = numN.format(s && s[k] != null ? s[k] : PADRAO[k]);
     });
     if (s && s.filamento != null) $("filamento").value = numN.format(s.filamento);
+    // a margem mínima padrão mudou de ×3 para ×2 (21/10/2026): aparelhos que ainda estão no padrão antigo passam para o novo
+    try { if (!localStorage.getItem("baksa3d.mm2")) { if (s && s.margemMin === 3) { s.margemMin = 2; $("margemMin").value = numN.format(2); localStorage.setItem(KEY, JSON.stringify(s)); } localStorage.setItem("baksa3d.mm2", "1"); } } catch (e) {}
     if (s && s.modo) setModo(s.modo, true);
     $("desp").value = s && s.desp != null ? s.desp : DESP_PADRAO;
     // última peça custeada
@@ -809,6 +812,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("l-min").textContent = brl.format(rMin.total);
     $("l-min-op").textContent = "margem ×" + numN.format(mMin) + " · lucro " + brl.format(lMin);
     var max = folga ? Math.floor((1 - rMin.total / r.total) * 100) : 0;
+    $("l-max").textContent = folga ? max + "% · até " + brl.format(r.total - rMin.total) : "sem margem para desconto";
     $("l-sim-box").hidden = max < 1;
     $("l-desc").max = Math.max(1, max);
     if (Number($("l-desc").value) > max) $("l-desc").value = max;
