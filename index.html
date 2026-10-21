@@ -146,6 +146,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .acts button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 8px 12px; font: 500 13px var(--f-body); cursor: pointer; }
 .acts button.del { color: var(--warn); }
+.acts a { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 8px 12px; font: 600 13px var(--f-body); text-decoration: none; }
 .item .meta.warn { color: var(--warn); }
 .empty { text-align: center; color: var(--muted); padding: 24px 12px; border: 1px dashed var(--line); border-radius: 10px; font-size: 14px; }
 .center { text-align: center; }
@@ -219,6 +220,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="brand" aria-label="Baksa.3d"><span class="layers" aria-hidden="true"></span><span class="wm">Baksa<span class="dot">.</span><span class="d3">3d</span></span></div>
   </header>
 
+  <button type="button" class="alerta info" id="alerta-cot" hidden><span class="ic" aria-hidden="true">?</span><span id="alerta-cot-txt"></span></button>
   <button type="button" class="alerta info" id="alerta-ped" hidden><span class="ic" aria-hidden="true">✓</span><span id="alerta-ped-txt"></span></button>
   <button type="button" class="alerta" id="alerta-est" hidden><span class="ic" aria-hidden="true">!</span><span id="alerta-txt"></span></button>
 
@@ -387,6 +389,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="kpi"><span class="k2">Cotações no mês</span><b id="q-mes">–</b></div>
       <div class="kpi"><span class="k2">Viraram pedido</span><b id="q-conv">–</b></div>
     </div>
+    <section id="q-ret-box" aria-labelledby="h-ret" hidden>
+      <h2 id="h-ret">Esperando resposta do cliente</h2>
+      <p class="hint">Cotações com nome ou telefone do cliente que ainda não viraram venda. Dê um retorno e marque o que aconteceu.</p>
+      <div id="q-ret" class="hj-g"></div>
+    </section>
     <div class="field">
       <label for="q-busca">Buscar</label>
       <div class="inp"><input id="q-busca" class="txt" type="search" autocomplete="off" placeholder="Nome da peça ou cliente"></div>
@@ -1060,7 +1067,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   $("alerta-ped").addEventListener("click", function () { verEntregues = false; abrirAba("pedidos"); });
   function renderAlerta() {
-    renderAlertaPed();
+    renderAlertaPed(); renderAlertaCot();
     var baixos = listaFil().filter(function (f) { return f.gramas < minimo(f); });
     var naAba = !$("tab-estoque").hidden;
     $("alerta-est").hidden = !baixos.length || naAba;
@@ -1614,10 +1621,22 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     c.cliente = p.cliente || c.cliente;
     var atual = cotAtual && cache.cotacoes[cotAtual];
     if (atual && atual.assinatura === c.assinatura) {
-      return gravar("cotacoes", cotAtual, Object.assign({}, atual, { status: "pedido", pedidoNumero: p.numero, cliente: p.cliente }));
+      return gravar("cotacoes", cotAtual, Object.assign({}, atual, { status: "pedido", pedidoNumero: p.numero, cliente: p.cliente })).then(function () { return fecharIguais(atual, p.numero); });
     }
     var id = novoId(); cotAtual = id;
-    return gravar("cotacoes", id, c);
+    return gravar("cotacoes", id, c).then(function () {
+      // a cotação que foi aberta para virar esta venda também fecha, mesmo se algo mudou no caminho
+      if (atual && (atual.status || "aberta") === "aberta") return gravar("cotacoes", atual.id, Object.assign({}, atual, { status: "pedido", pedidoNumero: p.numero })).then(function () { return fecharIguais(atual, p.numero); });
+    }).then(function () { return fecharIguais(c, p.numero); });
+  }
+  // Outras cotações abertas da mesma peça para o mesmo cliente também viram este pedido
+  function fecharIguais(c, numero) {
+    var k = chaveCot(c), ps = [];
+    Object.keys(cache.cotacoes).forEach(function (id) {
+      var x = cache.cotacoes[id];
+      if ((x.status || "aberta") === "aberta" && chaveCot(x) === k) ps.push(gravar("cotacoes", id, Object.assign({}, x, { status: "pedido", pedidoNumero: numero })));
+    });
+    return Promise.all(ps);
   }
   // Preço de uma cotação aberta pelas regras e custos de agora (filamento do estoque com o preço atual)
   var FIXOS = ["potencia", "kwh", "deprec", "impostos"];
@@ -1647,6 +1666,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("q-todas").addEventListener("click", function () { cotTodas = true; renderCotacoes(); });
   $("q-busca").addEventListener("input", function () { renderCotacoes(); });
   function renderCotacoes() {
+    renderRetorno();
     $("q-abertas").setAttribute("aria-pressed", !cotTodas);
     $("q-todas").setAttribute("aria-pressed", cotTodas);
     var todas = Object.keys(cache.cotacoes).map(function (k) { return cache.cotacoes[k]; })
@@ -1657,13 +1677,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("q-conv").textContent = doMes.length ? conv + " (" + Math.round(conv / doMes.length * 100) + "%)" : "0";
     var busca = $("q-busca").value.trim().toLowerCase();
     var lista = todas.filter(function (c) {
-      if (!cotTodas && c.status === "pedido") return false;
+      if (!cotTodas && (c.status === "pedido" || c.status === "perdida")) return false;
       if (busca && ((c.nome || "") + " " + (c.cliente || "")).toLowerCase().indexOf(busca) < 0) return false;
       return true;
     });
     var box = $("q-lista"); box.textContent = "";
     lista.forEach(function (c) {
-      var virou = c.status === "pedido";
+      var virou = c.status === "pedido", perdida = c.status === "perdida";
       var r = !virou && precoCot(c);
       var vTotal = r ? r.total : c.valorTotal || 0, vUnit = r ? r.final : c.valorUnit || 0;
       var vFrete = c.entradas ? parse(c.entradas.frete) : c.frete || 0;
@@ -1677,9 +1697,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           ]),
           el("div", { class: "val" }, [brl.format(vTotal + vFrete), el("div", { class: "meta", text: brl.format(vUnit) + " cada" + (vFrete > 0 ? " · frete " + brl.format(vFrete) : "") })])
         ]),
-        el("div", { class: "acts" }, [el("span", { class: "pill", text: virou ? "Virou pedido nº " + c.pedidoNumero : "Em aberto" })]),
+        el("div", { class: "acts" }, [el("span", { class: "pill" + (perdida ? " warn" : ""), text: virou ? "Virou pedido nº " + c.pedidoNumero : perdida ? "Não fechou" : "Em aberto" })]),
         el("div", { class: "acts" }, [
-          !virou ? el("button", { type: "button", class: "go", text: "Transformar em pedido", onclick: function () {
+          perdida ? el("button", { type: "button", text: "Reabrir", onclick: function () { marcarCot(c, { status: "aberta", retorno: Date.now() }, "Cotação reaberta."); } }) : null,
+          !virou && !perdida ? el("button", { type: "button", class: "go", text: "Transformar em pedido", onclick: function () {
             carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click();
           } }) : null,
           el("button", { type: "button", text: "Abrir no custo", onclick: function () { carregarCotacao(c); abrirAba("custo"); toast("Cotação carregada na aba Custo."); } }),
@@ -1693,6 +1714,71 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: !pronto ? "Carregando cotações…" : busca ? "Nenhuma cotação encontrada." : cotTodas ? "Nenhuma cotação salva ainda. Na aba Custo, toque em Salvar cotação." : "Nenhuma cotação em aberto." }));
   }
+
+  /* ---------- Retorno das cotações: quem ainda não respondeu ---------- */
+  function chaveCot(c) { return ((c.cliente || c.telefone || c.whatsapp || "") + "|" + (c.nome || "")).toLowerCase().trim(); }
+  function isoDe(ms) { var d = new Date(ms); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+  function diasDesde(ms) { return -diasAte(isoDe(ms)); }
+  // A mesma peça para o mesmo cliente pode ter várias cotações salvas: vale a mais recente
+  function cotPendentes() {
+    var vistas = {};
+    return Object.keys(cache.cotacoes).map(function (k) { return cache.cotacoes[k]; })
+      .filter(function (c) { return (c.status || "aberta") === "aberta" && (c.cliente || c.telefone || c.whatsapp); })
+      .sort(function (a, b) { return (b.criado || 0) - (a.criado || 0); })
+      .filter(function (c) { var k = chaveCot(c); if (vistas[k]) return false; vistas[k] = 1; return true; })
+      .sort(function (a, b) { return (a.retorno || a.criado || 0) - (b.retorno || b.criado || 0); });
+  }
+  function marcarCot(c, mudar, msg) {
+    var k = chaveCot(c), ps = [];
+    Object.keys(cache.cotacoes).forEach(function (id) {
+      var x = cache.cotacoes[id];
+      if (x.id === c.id || ((x.status || "aberta") === (c.status || "aberta") && chaveCot(x) === k)) ps.push(gravar("cotacoes", id, Object.assign({}, x, mudar)));
+    });
+    return Promise.all(ps).then(function () { if (msg) toast(msg); });
+  }
+  function linkWhats(c, valor) {
+    var n = String(c.whatsapp || c.telefone || "").replace(/\D/g, "");
+    if (n.length < 10) return "";
+    if (n.length <= 11) n = "55" + n;
+    var txt = "Olá" + (c.cliente ? " " + c.cliente.split(" ")[0] : "") + "! Aqui é da Baksa.3d. Passando para saber se você decidiu sobre o orçamento de " + c.nome + " (" + c.qtd + (c.qtd === 1 ? " peça" : " peças") + ", " + brl.format(valor) + "). Posso ajudar em alguma coisa?";
+    return "https://wa.me/" + n + "?text=" + encodeURIComponent(txt);
+  }
+  function renderRetorno() {
+    var lista = cotPendentes(), box = $("q-ret"); box.textContent = "";
+    $("q-ret-box").hidden = !lista.length;
+    lista.forEach(function (c) {
+      var r = precoCot(c), valor = (r ? r.total : c.valorTotal || 0) + (c.entradas ? parse(c.entradas.frete) : c.frete || 0);
+      var d = diasDesde(c.retorno || c.criado), wa = linkWhats(c, valor);
+      var quando = (c.retorno ? "último contato " : "cotado ") + (d === 0 ? "hoje" : d === 1 ? "ontem" : "há " + d + " dias");
+      box.appendChild(el("div", { class: "hj", style: "flex-wrap:wrap" }, [
+        el("div", { style: "flex:1 1 200px" }, [
+          el("b", { text: (c.cliente || c.telefone || c.whatsapp) + " · " + c.nome + " × " + c.qtd }),
+          el("div", { class: "meta", text: brl.format(valor) + " · cotado em " + dataBR(c.criado) }),
+          el("div", { class: "meta" + (d >= 3 ? " warn" : ""), text: quando + (d >= 3 ? " · vale chamar o cliente" : "") })
+        ]),
+        el("div", { class: "acts", style: "flex:1 1 100%" }, [
+          wa ? el("a", { href: wa, target: "_blank", rel: "noopener", text: "Chamar no WhatsApp", onclick: function () { marcarCot(c, { retorno: Date.now() }); } }) : null,
+          el("button", { type: "button", text: "Já falei", onclick: function () { marcarCot(c, { retorno: Date.now() }, "Contato anotado."); } }),
+          el("button", { type: "button", text: "Virou venda", onclick: function () { carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click(); } }),
+          el("button", { type: "button", class: "del", text: "Não fechou", onclick: function () {
+            confirmar("O cliente não fechou?", (c.cliente || "Cliente") + " · " + c.nome + ". A cotação sai da lista de espera (fica em Todas, com a opção Reabrir).", [
+              { texto: "Não fechou", classe: "primary", acao: function () { marcarCot(c, { status: "perdida", fechada: Date.now() }, "Marcada como não fechou."); } }
+            ]);
+          } })
+        ])
+      ]));
+    });
+  }
+  function renderAlertaCot() {
+    var lista = cotPendentes(), velhas = lista.filter(function (c) { return diasDesde(c.retorno || c.criado) >= 3; }).length;
+    $("alerta-cot").hidden = !lista.length || !$("tab-cotacoes").hidden;
+    $("t-cotacoes").textContent = "Cotações";
+    if (velhas) $("t-cotacoes").appendChild(el("span", { class: "ponto", "aria-label": "cotações sem resposta" }));
+    var box = $("alerta-cot-txt"); box.textContent = "";
+    box.appendChild(el("b", { text: "Cotações: " }));
+    box.appendChild(document.createTextNode(lista.length + (lista.length === 1 ? " esperando resposta do cliente" : " esperando resposta dos clientes") + (velhas ? " (" + velhas + " há 3 dias ou mais)" : "") + ". Toque para ver."));
+  }
+  $("alerta-cot").addEventListener("click", function () { abrirAba("cotacoes"); });
 
   /* ---------- Catálogo de peças salvas ---------- */
   var CAMPOS_CAT = ["nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem"];
