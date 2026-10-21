@@ -588,6 +588,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="field"><label for="sv-frete">Frete</label><div class="inp"><span class="pre">R$</span><input id="sv-frete" inputmode="decimal" placeholder="0,00"></div>
       <p class="hint">Somado ao total do pedido, sem margem nem impostos.</p></div>
     <div class="lines"><div class="ln total"><span>Total do pedido</span><span id="sv-total"></span></div></div>
+    <div class="field"><label for="sv-cond">Condição de pagamento</label><div class="selwrap"><select id="sv-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: até 3x (entrada / 21 DD / 42 DD)</option></select></div>
+      <p class="hint" id="sv-cond-info"></p></div>
     <div class="field"><label for="sv-receb">Recebido agora</label><div class="inp"><span class="pre">R$</span><input id="sv-receb" inputmode="decimal" placeholder="0,00"></div>
       <div class="chips" id="sv-receb-chips"><button type="button" data-f="0">Nada</button><button type="button" data-f="0.5">Metade (sinal)</button><button type="button" data-f="1">Tudo</button></div>
       <p class="hint" id="sv-falta"></p></div>
@@ -682,6 +684,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="field"><label for="or-envio">Modo de envio</label><div class="inp"><input id="or-envio" class="txt" autocomplete="off"></div></div>
       <div class="field"><label for="or-frete">Frete</label><div class="inp"><span class="pre">R$</span><input id="or-frete" inputmode="decimal"></div></div>
     </div>
+    <div class="field"><label for="or-cond">Condição de pagamento</label><div class="selwrap"><select id="or-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: até 3x (entrada / 21 DD / 42 DD)</option></select></div></div>
     <div class="field"><label for="or-pag">Forma de pagamento</label><textarea id="or-pag" rows="3"></textarea></div>
     <div class="lines"><div class="ln total"><span>Total do orçamento</span><span id="or-total"></span></div></div>
     <p class="hint err" id="or-erro" aria-live="polite"></p>
@@ -1402,6 +1405,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   $("abrir-venda").addEventListener("click", function () {
     calcular();
+    var cc = cotAtual && cache.cotacoes[cotAtual], oc = cc && cc.orc && cc.orc.cond;
+    $("sv-cond").value = CONDICOES[oc] ? oc : "pf"; condVenda();
     $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = $("frete").value; $("sv-prazo").value = ""; $("sv-receb").value = "";
     resumoVenda();
     abrirSheet("sh-venda");
@@ -1418,6 +1423,15 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     b.addEventListener("click", function () { $("sv-receb").value = num2.format(centavos(totalPedido() * parse(b.dataset.f))); atualizaReceb(); });
   });
   $("sv-receb").addEventListener("input", atualizaReceb);
+  function condVenda() {
+    var C = CONDICOES[$("sv-cond").value];
+    $("sv-cond-info").textContent = C ? C.texto(totalPedido()).replace(/\n/g, " · ") : "";
+  }
+  $("sv-cond").addEventListener("change", function () {
+    var C = CONDICOES[this.value]; condVenda();
+    if (C) { $("sv-receb").value = num2.format(centavos(totalPedido() * C.sinal)); atualizaReceb(); }
+  });
+  $("sv-frete").addEventListener("input", condVenda);
   $("sv-frete").addEventListener("input", atualizaReceb);
   $("sv-cancelar").addEventListener("click", function () { fecharSheet("sh-venda"); });
   function proximoNumero() {
@@ -1439,6 +1453,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       pesoTotal: u.peso, tempoTotal: u.tempo,
       filamentoId: f ? f.id : "", filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
       baixa: f ? u.peso : 0, status: "fila",
+      condicao: $("sv-cond").value,
       pagamentos: receb > 0 ? [{ valor: receb, forma: $("sv-forma").value, data: Date.now() }] : [],
       pago: receb >= u.total + frete - 0.005
     };
@@ -1538,6 +1553,30 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   // Pedidos antigos só tinham "pago" (sim/não): pago vira um pagamento do valor todo, sem forma informada
   function pagamentos(p) { return Array.isArray(p.pagamentos) ? p.pagamentos : p.pago ? [{ valor: p.valorTotal || 0, forma: "", data: p.criado }] : []; }
   function recebido(p) { return pagamentos(p).reduce(function (s, x) { return s + (x.valor || 0); }, 0); }
+  // Condições de pagamento combinadas com o cliente
+  var CONDICOES = {
+    pf: { curto: "50% entrada + saldo na entrega", sinal: 0.5,
+      texto: function (t) { return "Entrada de 50%: " + brl.format(t / 2) + "\nSaldo na entrega: " + brl.format(t - centavos(t / 2)); } },
+    avista: { curto: "à vista antecipado", sinal: 1,
+      texto: function (t) { return "À vista antecipado: " + brl.format(t); } },
+    pj: { curto: "até 3x (entrada / 21 DD / 42 DD)", sinal: 1 / 3,
+      texto: function (t) { return "Até 3 x de " + brl.format(t / 3) + " (Entrada/ 21 DD/ 42DD)"; } }
+  };
+  // O que falta receber e quando, conforme a condição do pedido
+  function textoCond(p) {
+    var C = CONDICOES[p.condicao]; if (!C) return "";
+    var f = falta(p); if (!(f > 0)) return "Condição: " + C.curto + ".";
+    if (p.condicao === "pf") return "Condição: " + C.curto + (recebido(p) > 0 ? ". Saldo " + brl.format(f) + " na entrega." : ". Falta a entrada.");
+    if (p.condicao === "avista") return "À vista antecipado: receber " + brl.format(f) + " antes de produzir.";
+    var parc = (p.valorTotal || 0) / 3, rec = recebido(p);
+    for (var i = 0; i < 3; i++) {
+      if (rec < parc * (i + 1) - 0.005) {
+        var venc = (p.criado || Date.now()) + [0, 21, 42][i] * 864e5;
+        return "PJ 3x: " + (i ? (i + 1) + "ª parcela" : "entrada") + " de " + brl.format(Math.min(parc * (i + 1) - rec, f)) + (i ? " vence " + dataBR(venc) + (venc < Date.now() ? " (vencida)" : "") : "") + ".";
+      }
+    }
+    return "";
+  }
   function falta(p) { var f = centavos((p.valorTotal || 0) - recebido(p)); return f > 0.005 ? f : 0; }
   function textoPago(p) {
     var r = recebido(p), fl = falta(p);
@@ -1634,6 +1673,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + (p.filamento ? " · " + p.filamento : "") }),
             el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) }),
             el("div", { class: "meta" + (atrasado ? " warn" : ""), text: textoPrazo(p) }),
+            textoCond(p) ? el("div", { class: "meta", text: textoCond(p) }) : null,
             (p.telefone || p.whatsapp || p.email) ? el("div", { class: "meta", text: [p.telefone ? "Tel. " + p.telefone : "", p.whatsapp && p.whatsapp !== p.telefone ? "WhatsApp " + p.whatsapp : (p.whatsapp ? "(WhatsApp)" : ""), p.email].filter(Boolean).join(" · ") }) : null
           ]),
           el("div", { class: "val" }, [brl.format(p.valorTotal), el("div", { class: "meta", text: p.frete ? "frete " + brl.format(p.frete) : "sem frete" })])
@@ -1711,7 +1751,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           el("div", null, [
             el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + " · " + dataBR(p.criado) + " · " + nomeStatus(p.status || "fila").toLowerCase() }),
-            el("div", { class: "meta", text: [p.telefone, p.whatsapp && p.whatsapp !== p.telefone ? p.whatsapp : ""].filter(Boolean).join(" · ") })
+            el("div", { class: "meta", text: [p.telefone, p.whatsapp && p.whatsapp !== p.telefone ? p.whatsapp : ""].filter(Boolean).join(" · ") }),
+            textoCond(p) ? el("div", { class: "meta" + (/vencida/.test(textoCond(p)) ? " warn" : ""), text: textoCond(p) }) : null
           ]),
           el("div", { class: "val" }, [brl.format(falta(p)), el("div", { class: "meta", text: recebido(p) > 0 ? "sinal " + brl.format(recebido(p)) : "de " + brl.format(p.valorTotal || 0) })])
         ]),
@@ -2138,6 +2179,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       it.querySelector(".or-sel").addEventListener("change", totalOrc);
     });
     $("or-frete").value = numN.format(o.frete != null ? o.frete : valoresCot(c).frete);
+    var docNum = (o.doc || "").replace(/\D/g, "");
+    $("or-cond").value = CONDICOES[o.cond] ? o.cond : docNum.length === 14 ? "pj" : "pf";
     $("or-pag").value = o.pagamento || "";
     $("or-erro").textContent = "";
     totalOrc();
@@ -2149,18 +2192,25 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       return x && it.querySelector(".or-sel").checked ? { c: x, v: valoresCot(x), desc: it.querySelector(".or-desc").value.trim() } : null;
     }).filter(Boolean);
   }
-  function textoPagamento(total) {
-    return "Até 3 x de " + brl.format(total / 3) + " (Entrada/ 21 DD/ 42DD)\nChave Pix: 47-99196-4555\nBanco: C6";
+  function textoPagamento(total, cond) {
+    var C = CONDICOES[cond] || CONDICOES.pj;
+    return C.texto(total) + "\nChave Pix: 47-99196-4555\nBanco: C6";
   }
   var pagAuto = "";
   function totalOrc() {
     var sub = itensOrc().reduce(function (s, i) { return s + i.v.total; }, 0), total = sub + parse($("or-frete").value);
     $("or-total").textContent = brl.format(total);
     // o texto de pagamento acompanha o total enquanto ninguém mexer nele
-    if (!$("or-pag").value || $("or-pag").value === pagAuto) { pagAuto = textoPagamento(total); $("or-pag").value = pagAuto; }
+    if (!$("or-pag").value || $("or-pag").value === pagAuto) { pagAuto = textoPagamento(total, $("or-cond").value); $("or-pag").value = pagAuto; }
     return total;
   }
   $("or-frete").addEventListener("input", totalOrc);
+  // trocar a condição reescreve o texto de pagamento
+  $("or-cond").addEventListener("change", function () { $("or-pag").value = ""; totalOrc(); });
+  $("or-doc").addEventListener("change", function () {
+    var n = this.value.replace(/\D/g, ""); if (n.length !== 14 && n.length !== 11) return;
+    var novo = n.length === 14 ? "pj" : "pf"; if ($("or-cond").value !== novo && $("or-cond").value !== "avista") { $("or-cond").value = novo; $("or-pag").value = ""; totalOrc(); }
+  });
   $("or-cancelar").addEventListener("click", function () { fecharSheet("sh-orc"); });
   $("orc-custo").addEventListener("click", function () {
     salvarCotacao(true).then(function (id) { if (id) abrirOrc(id); });
@@ -2247,7 +2297,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var d = { marca: $("or-marca").value, numero: $("or-num").value.trim() || proximoOrc(new Date().getFullYear()), data: $("or-data").value || hojeISO(),
       empresa: $("or-emp").value.trim(), contato: $("or-contato").value.trim(), doc: $("or-doc").value.trim(),
       cidade: $("or-cidade").value.trim(), telefone: $("or-tel").value.trim(), envio: $("or-envio").value.trim(),
-      pagamento: $("or-pag").value.trim(), itens: itens, subtotal: sub, frete: frete, total: sub + frete };
+      cond: $("or-cond").value, pagamento: $("or-pag").value.trim(), itens: itens, subtotal: sub, frete: frete, total: sub + frete };
     var pdf = montarPDF(d), nomeArq = "Orcamento_" + d.numero + (d.empresa ? " - " + d.empresa.replace(/[\\/:*?"<>|]/g, "") : "") + ".pdf";
     var blob = pdf.output("blob"), arq = null;
     try { arq = new File([blob], nomeArq, { type: "application/pdf" }); } catch (x) {}
@@ -2260,7 +2310,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     }
     var desc = {}; itens.forEach(function (i) { desc[i.c.id] = i.desc; });
     var orc = { marca: d.marca, data: d.data, empresa: d.empresa, contato: d.contato, doc: d.doc, cidade: d.cidade, telefone: d.telefone, envio: d.envio,
-      frete: frete, pagamento: d.pagamento === textoPagamento(d.total) ? "" : d.pagamento, itens: itens.map(function (i) { return i.c.id; }), desc: desc };
+      frete: frete, cond: d.cond, pagamento: d.pagamento === textoPagamento(d.total, d.cond) ? "" : d.pagamento, itens: itens.map(function (i) { return i.c.id; }), desc: desc };
     gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orcHist: (c.orcHist || []).concat([d.numero]), orc: orc, retorno: Date.now() }));
     itens.forEach(function (i) { if (i.c.id !== c.id) gravar("cotacoes", i.c.id, Object.assign({}, i.c, { orcNumero: d.numero })); });
     fecharSheet("sh-orc"); toast("Orçamento " + d.numero + " gerado.");
