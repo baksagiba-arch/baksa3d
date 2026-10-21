@@ -588,7 +588,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="field"><label for="sv-frete">Frete</label><div class="inp"><span class="pre">R$</span><input id="sv-frete" inputmode="decimal" placeholder="0,00"></div>
       <p class="hint">Somado ao total do pedido, sem margem nem impostos.</p></div>
     <div class="lines"><div class="ln total"><span>Total do pedido</span><span id="sv-total"></span></div></div>
-    <div class="field"><label for="sv-cond">Condição de pagamento</label><div class="selwrap"><select id="sv-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: até 3x (entrada / 21 DD / 42 DD)</option></select></div>
+    <div class="field"><label for="sv-cond">Condição de pagamento</label><div class="selwrap"><select id="sv-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: 3x (entrada / 21 DD / 42 DD)</option></select></div>
       <p class="hint" id="sv-cond-info"></p></div>
     <div class="field"><label for="sv-receb">Recebido agora</label><div class="inp"><span class="pre">R$</span><input id="sv-receb" inputmode="decimal" placeholder="0,00"></div>
       <div class="chips" id="sv-receb-chips"><button type="button" data-f="0">Nada</button><button type="button" data-f="0.5">Metade (sinal)</button><button type="button" data-f="1">Tudo</button></div>
@@ -684,7 +684,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="field"><label for="or-envio">Modo de envio</label><div class="inp"><input id="or-envio" class="txt" autocomplete="off"></div></div>
       <div class="field"><label for="or-frete">Frete</label><div class="inp"><span class="pre">R$</span><input id="or-frete" inputmode="decimal"></div></div>
     </div>
-    <div class="field"><label for="or-cond">Condição de pagamento</label><div class="selwrap"><select id="or-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: até 3x (entrada / 21 DD / 42 DD)</option></select></div></div>
+    <div class="field"><label for="or-cond">Condição de pagamento (nós definimos)</label><div class="selwrap"><select id="or-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: 3x (entrada / 21 DD / 42 DD)</option></select></div></div>
     <div class="field"><label for="or-pag">Forma de pagamento</label><textarea id="or-pag" rows="3"></textarea></div>
     <div class="lines"><div class="ln total"><span>Total do orçamento</span><span id="or-total"></span></div></div>
     <p class="hint err" id="or-erro" aria-live="polite"></p>
@@ -1407,6 +1407,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     calcular();
     var cc = cotAtual && cache.cotacoes[cotAtual], oc = cc && cc.orc && cc.orc.cond;
     $("sv-cond").value = CONDICOES[oc] ? oc : "pf"; condVenda();
+    if (CONDICOES[oc]) $("sv-cond-info").textContent = "Definida no orçamento " + (cc.orcNumero || "") + ". " + $("sv-cond-info").textContent;
     $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = $("frete").value; $("sv-prazo").value = ""; $("sv-receb").value = "";
     resumoVenda();
     abrirSheet("sh-venda");
@@ -1556,11 +1557,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   // Condições de pagamento combinadas com o cliente
   var CONDICOES = {
     pf: { curto: "50% entrada + saldo na entrega", sinal: 0.5,
-      texto: function (t) { return "Entrada de 50%: " + brl.format(t / 2) + "\nSaldo na entrega: " + brl.format(t - centavos(t / 2)); } },
+      texto: function (t) { return "Condição: 50% de entrada (" + brl.format(centavos(t / 2)) + ") e saldo de " + brl.format(t - centavos(t / 2)) + " na entrega."; } },
     avista: { curto: "à vista antecipado", sinal: 1,
-      texto: function (t) { return "À vista antecipado: " + brl.format(t); } },
-    pj: { curto: "até 3x (entrada / 21 DD / 42 DD)", sinal: 1 / 3,
-      texto: function (t) { return "Até 3 x de " + brl.format(t / 3) + " (Entrada/ 21 DD/ 42DD)"; } }
+      texto: function (t) { return "Condição: à vista antecipado, " + brl.format(t) + " antes da produção."; } },
+    pj: { curto: "3x (entrada / 21 DD / 42 DD)", sinal: 1 / 3,
+      texto: function (t) { return "Condição: 3 x de " + brl.format(t / 3) + " (entrada, 21 DD e 42 DD)."; } }
   };
   // O que falta receber e quando, conforme a condição do pedido
   function textoCond(p) {
