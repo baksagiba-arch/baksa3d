@@ -443,6 +443,16 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="graf-x" id="v-graf-x" aria-hidden="true"></div>
       <p class="hint" id="v-graf-info"></p>
     </section>
+    <section id="v-rec-box" hidden>
+      <div class="shead"><h2>Contas a receber</h2><b id="v-rec-tot" style="font:500 16px var(--f-num);color:var(--warn)"></b></div>
+      <p class="hint">Todos os pedidos com valor faltando, de qualquer mês.</p>
+      <div id="v-rec" class="lista"></div>
+    </section>
+    <section id="v-formas-box" hidden>
+      <h2>Dinheiro recebido no período</h2>
+      <div id="v-formas" class="lines"></div>
+      <p class="hint">Pela data em que cada pagamento ou sinal foi recebido.</p>
+    </section>
     <section id="v-top-box" hidden>
       <h2>Peças mais vendidas</h2>
       <div id="v-top" class="rank"></div>
@@ -494,7 +504,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="field"><label for="sv-frete">Frete</label><div class="inp"><span class="pre">R$</span><input id="sv-frete" inputmode="decimal" placeholder="0,00"></div>
       <p class="hint">Somado ao total do pedido, sem margem nem impostos.</p></div>
     <div class="lines"><div class="ln total"><span>Total do pedido</span><span id="sv-total"></span></div></div>
-    <label class="check"><input type="checkbox" id="sv-pago" checked> Pagamento já recebido</label>
+    <div class="field"><label for="sv-receb">Recebido agora</label><div class="inp"><span class="pre">R$</span><input id="sv-receb" inputmode="decimal" placeholder="0,00"></div>
+      <div class="chips" id="sv-receb-chips"><button type="button" data-f="0">Nada</button><button type="button" data-f="0.5">Metade (sinal)</button><button type="button" data-f="1">Tudo</button></div>
+      <p class="hint" id="sv-falta"></p></div>
+    <div class="field" id="sv-forma-box" hidden><label for="sv-forma">Forma de pagamento</label><div class="selwrap"><select id="sv-forma"><option>Pix</option><option>Dinheiro</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Transferência</option><option>Outro</option></select></div></div>
     <p class="hint warn" id="sv-aviso"></p>
     <div class="d-acoes">
       <button type="button" class="primary" id="sv-ok">Confirmar venda</button>
@@ -510,6 +523,24 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="inp"><input id="cat-busca" class="txt" type="search" autocomplete="off" placeholder="Buscar peça" aria-label="Buscar peça"></div>
     <div id="cat-lista" class="lista"></div>
     <div class="vbtns"><button type="button" id="cat-fechar">Fechar</button></div>
+  </div>
+</div>
+
+<div class="sheet" id="sh-pag" hidden role="dialog" aria-modal="true" aria-labelledby="pg-titulo">
+  <div class="card">
+    <h3 id="pg-titulo">Pagamentos</h3>
+    <div class="lines" id="pg-resumo"></div>
+    <div class="lines" id="pg-lista"></div>
+    <div id="pg-form" class="grid" style="display:grid;gap:12px">
+      <div class="field"><label for="pg-valor">Valor recebido</label><div class="inp"><span class="pre">R$</span><input id="pg-valor" inputmode="decimal"></div>
+        <div class="chips" id="pg-chips"><button type="button" data-f="1">Tudo que falta</button><button type="button" data-f="0.5">Metade do que falta</button></div></div>
+      <div class="field"><label for="pg-forma">Forma de pagamento</label><div class="selwrap"><select id="pg-forma"><option>Pix</option><option>Dinheiro</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Transferência</option><option>Outro</option></select></div></div>
+      <p class="hint err" id="pg-erro" aria-live="polite"></p>
+    </div>
+    <div class="d-acoes">
+      <button type="button" class="primary" id="pg-ok">Registrar pagamento</button>
+      <button type="button" id="pg-fechar">Fechar</button>
+    </div>
   </div>
 </div>
 
@@ -906,11 +937,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function porKg(f) { return f.pesoCarretel > 0 ? f.valorCarretel / f.pesoCarretel * 1000 : 0; }
   function abrirSheet(id) { $(id).hidden = false; }
   function fecharSheet(id) { $(id).hidden = true; }
-  ["sh-fil", "sh-venda", "sh-conf", "sh-cat"].forEach(function (id) {
+  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) fecharSheet(id); });
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat"].forEach(fecharSheet);
+    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag"].forEach(fecharSheet);
   });
 
   // confirmação dentro da página (o app não usa janelas do navegador)
@@ -1091,7 +1122,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
      ["Filamento", f ? filLabel(f) : "Manual (sem baixa)"],
      ["Consumo", kg(u.peso) + " · " + hm(u.tempo)]
     ].forEach(function (r) { box.appendChild(el("div", { class: "ln" }, [el("span", { text: r[0] }), el("span", { text: r[1] })])); });
-    $("sv-total").textContent = brl.format(totalPedido());
+    atualizaReceb();
     var av = "";
     if (!f) av = "Sem filamento do estoque escolhido: o peso não será descontado.";
     else if (f.gramas < u.peso) av = "Estoque de " + filLabel(f) + " tem só " + kg(f.gramas) + ". O pedido será registrado e o estoque ficará zerado ou negativo.";
@@ -1099,11 +1130,23 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   $("abrir-venda").addEventListener("click", function () {
     calcular();
-    $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = $("frete").value; $("sv-prazo").value = ""; $("sv-pago").checked = false;
+    $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = $("frete").value; $("sv-prazo").value = ""; $("sv-receb").value = "";
     resumoVenda();
     abrirSheet("sh-venda");
   });
-  $("sv-frete").addEventListener("input", function () { $("sv-total").textContent = brl.format(totalPedido()); });
+  function centavos(v) { return Math.round(v * 100) / 100; }
+  function atualizaReceb() {
+    var t = totalPedido(), r = Math.min(parse($("sv-receb").value), t);
+    $("sv-total").textContent = brl.format(t);
+    $("sv-forma-box").hidden = !(r > 0);
+    $("sv-falta").textContent = r <= 0 ? "Nada recebido: o pedido fica todo a receber." : r >= t - 0.005 ? "Pedido pago." : "Fica faltando " + brl.format(t - r) + ".";
+    [].forEach.call($("sv-receb-chips").children, function (b) { b.setAttribute("aria-pressed", $("sv-receb").value !== "" && Math.abs(centavos(t * parse(b.dataset.f)) - r) < 0.005); });
+  }
+  [].forEach.call($("sv-receb-chips").children, function (b) {
+    b.addEventListener("click", function () { $("sv-receb").value = num2.format(centavos(totalPedido() * parse(b.dataset.f))); atualizaReceb(); });
+  });
+  $("sv-receb").addEventListener("input", atualizaReceb);
+  $("sv-frete").addEventListener("input", atualizaReceb);
   $("sv-cancelar").addEventListener("click", function () { fecharSheet("sh-venda"); });
   function proximoNumero() {
     var n = 0; Object.keys(cache.pedidos).forEach(function (k) { n = Math.max(n, cache.pedidos[k].numero || 0); });
@@ -1112,6 +1155,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("sv-ok").addEventListener("click", function () {
     var btn = this; if (btn.disabled) return;
     var u = ultimo, f = filAtual(), frete = parse($("sv-frete").value);
+    var receb = centavos(Math.min(parse($("sv-receb").value), u.total + frete));
     var p = {
       numero: proximoNumero(), criado: Date.now(),
       nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
@@ -1121,7 +1165,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       custo: u.custo, impostos: u.impostos, margem: u.margem, desperdicio: u.desp,
       pesoTotal: u.peso, tempoTotal: u.tempo,
       filamentoId: f ? f.id : "", filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
-      baixa: f ? u.peso : 0, pago: $("sv-pago").checked, status: "fila"
+      baixa: f ? u.peso : 0, status: "fila",
+      pagamentos: receb > 0 ? [{ valor: receb, forma: $("sv-forma").value, data: Date.now() }] : [],
+      pago: receb >= u.total + frete - 0.005
     };
     btn.disabled = true;
     gravar("pedidos", novoId(), p).then(function () {
@@ -1188,7 +1234,69 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       } }
     ], { label: "Data de entrega (deixe vazio para tirar o prazo)", tipo: "date", valor: p.prazo || "" });
   }
-  function mudarStatus(p, st) { gravar("pedidos", p.id, Object.assign({}, p, { status: st, ["em_" + st]: Date.now() })); }
+  function mudarStatus(p, st) {
+    gravar("pedidos", p.id, Object.assign({}, p, { status: st, ["em_" + st]: Date.now() })).then(function () {
+      if (st === "entregue" && falta(p) > 0) toast("Entregue. Ainda falta receber " + brl.format(falta(p)) + ".");
+    });
+  }
+
+  /* ---------- Pagamentos: sinal, quanto falta e forma ---------- */
+  // Pedidos antigos só tinham "pago" (sim/não): pago vira um pagamento do valor todo, sem forma informada
+  function pagamentos(p) { return Array.isArray(p.pagamentos) ? p.pagamentos : p.pago ? [{ valor: p.valorTotal || 0, forma: "", data: p.criado }] : []; }
+  function recebido(p) { return pagamentos(p).reduce(function (s, x) { return s + (x.valor || 0); }, 0); }
+  function falta(p) { var f = centavos((p.valorTotal || 0) - recebido(p)); return f > 0.005 ? f : 0; }
+  function textoPago(p) {
+    var r = recebido(p), fl = falta(p);
+    if (!fl) { var fs = pagamentos(p).map(function (x) { return x.forma; }).filter(Boolean); return "Pago" + (fs.length ? " · " + fs.filter(function (x, i) { return fs.indexOf(x) === i; }).join(" + ") : ""); }
+    return r > 0 ? "Sinal " + brl.format(r) + " · falta " + brl.format(fl) : "A receber " + brl.format(fl);
+  }
+  var pagAtual = null;
+  function abrirPag(p) { pagAtual = p.id; renderPag(true); abrirSheet("sh-pag"); }
+  function renderPag(novo) {
+    var p = cache.pedidos[pagAtual];
+    if (!p) { fecharSheet("sh-pag"); return; }
+    $("pg-titulo").textContent = "Pagamentos · nº " + p.numero;
+    var fl = falta(p), res = $("pg-resumo"); res.textContent = "";
+    [["Cliente", p.cliente || "Sem cliente"], ["Total do pedido", brl.format(p.valorTotal || 0)], ["Recebido", brl.format(recebido(p))]].forEach(function (r) {
+      res.appendChild(el("div", { class: "ln" }, [el("span", { text: r[0] }), el("span", { text: r[1] })]));
+    });
+    res.appendChild(el("div", { class: "ln total" }, [el("span", { text: fl ? "Falta receber" : "Pedido pago" }), el("span", { text: brl.format(fl) })]));
+    var box = $("pg-lista"); box.textContent = "";
+    pagamentos(p).forEach(function (x, i) {
+      box.appendChild(el("div", { class: "ln" }, [
+        el("span", { text: dataBR(x.data) + " · " + (x.forma || "Forma não informada") }),
+        el("span", null, [brl.format(x.valor), " ", el("button", { type: "button", class: "mini", style: "color:var(--warn);padding:2px 10px", "aria-label": "Apagar este pagamento", text: "×", onclick: function () {
+          confirmar("Apagar este pagamento?", brl.format(x.valor) + " de " + dataBR(x.data) + " (" + (x.forma || "forma não informada") + ").", [
+            { texto: "Apagar pagamento", classe: "danger", acao: function () {
+              var lista = pagamentos(p).filter(function (y, j) { return j !== i; });
+              salvarPag(p, lista).then(function () { abrirSheet("sh-pag"); });
+            } }
+          ]);
+        } })])
+      ]));
+    });
+    $("pg-form").hidden = !fl; $("pg-ok").hidden = !fl;
+    if (novo) { $("pg-valor").value = fl ? num2.format(fl) : ""; $("pg-erro").textContent = ""; }
+  }
+  function salvarPag(p, lista) {
+    var r = lista.reduce(function (s, x) { return s + x.valor; }, 0);
+    return gravar("pedidos", p.id, Object.assign({}, p, { pagamentos: lista, pago: r >= (p.valorTotal || 0) - 0.005 }));
+  }
+  [].forEach.call($("pg-chips").children, function (b) {
+    b.addEventListener("click", function () { var p = cache.pedidos[pagAtual]; if (p) $("pg-valor").value = num2.format(centavos(falta(p) * parse(b.dataset.f))); });
+  });
+  $("pg-ok").addEventListener("click", function () {
+    var p = cache.pedidos[pagAtual]; if (!p) return;
+    var v = centavos(parse($("pg-valor").value));
+    if (v <= 0) { $("pg-erro").textContent = "Informe o valor recebido."; return; }
+    if (v > falta(p) + 0.005) { $("pg-erro").textContent = "O valor passa do que falta (" + brl.format(falta(p)) + ")."; return; }
+    salvarPag(p, pagamentos(p).concat([{ valor: v, forma: $("pg-forma").value, data: Date.now() }])).then(function () {
+      var q = cache.pedidos[pagAtual];
+      toast(q && !falta(q) ? "Pagamento registrado. Pedido pago." : "Pagamento registrado.");
+      if (q && !falta(q)) fecharSheet("sh-pag"); else renderPag(true);
+    });
+  });
+  $("pg-fechar").addEventListener("click", function () { fecharSheet("sh-pag"); });
   function excluirPed(p) {
     var fil = p.filamentoId && cache.filamentos[p.filamentoId];
     var bts = [];
@@ -1213,7 +1321,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var cmp = {
       prazo: function (a, b) { return (a.prazo || "9999") < (b.prazo || "9999") ? -1 : (a.prazo || "9999") > (b.prazo || "9999") ? 1 : 0; },
       etapa: function (a, b) { return (ETAPA[a.status] || 0) - (ETAPA[b.status] || 0); },
-      receber: function (a, b) { return (a.pago ? 1 : 0) - (b.pago ? 1 : 0); },
+      receber: function (a, b) { return falta(b) - falta(a); },
       valor: function (a, b) { return (b.valorTotal || 0) - (a.valorTotal || 0); },
       cliente: function (a, b) { return (a.cliente || "~").localeCompare(b.cliente || "~", "pt-BR"); }
     }[ordem];
@@ -1239,13 +1347,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         p.resumo ? el("div", { class: "resumo", text: p.resumo }) : null,
         el("div", { class: "acts" }, [
           el("span", { class: "pill" + (atrasado ? " warn" : ""), text: atrasado ? "Atrasado · " + nomeStatus(p.status) : nomeStatus(p.status) }),
-          el("span", { class: "pill" + (p.pago ? "" : " warn"), text: p.pago ? "Pago" : "A receber" })
+          el("span", { class: "pill" + (falta(p) ? " warn" : ""), text: textoPago(p) })
         ]),
         el("div", { class: "acts" }, [
           prox ? el("button", { type: "button", class: "go", text: "Marcar " + prox.nome.toLowerCase(), onclick: function () { mudarStatus(p, prox.id); } }) : null,
           idx > 0 ? el("button", { type: "button", text: "Voltar etapa", onclick: function () { mudarStatus(p, STATUS[idx - 1].id); } }) : null,
           p.status !== "entregue" ? el("button", { type: "button", text: p.prazo ? "Mudar prazo" : "Pôr prazo", onclick: function () { editarPrazo(p); } }) : null,
-          el("button", { type: "button", text: p.pago ? "Marcar a receber" : "Marcar pago", onclick: function () { gravar("pedidos", p.id, Object.assign({}, p, { pago: !p.pago })); } }),
+          el("button", { type: "button", text: falta(p) ? "Receber pagamento" : "Ver pagamentos", onclick: function () { abrirPag(p); } }),
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () { excluirPed(p); } })
         ])
       ]));
@@ -1278,7 +1386,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     lista.forEach(function (p) {
       fat += p.valorTotal || 0;
       lucro += (p.valorPecas || 0) - (p.custo || 0) - (p.impostos || 0);
-      if (!p.pago) receber += p.valorTotal || 0;
+      receber += falta(p);
       g += p.pesoTotal || 0; pecas += p.qtd || 0; horas += p.tempoTotal || 0;
       var k = p.filamento || "Preço manual";
       porFil[k] = porFil[k] || { g: 0, hex: p.hex }; porFil[k].g += p.pesoTotal || 0;
@@ -1298,6 +1406,35 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     $("v-cores-box").hidden = !lista.length;
     renderGrafico(todos, atual);
+    var devendo = todos.filter(function (p) { return falta(p) > 0; }), totRec = 0, rbox = $("v-rec"); rbox.textContent = "";
+    devendo.forEach(function (p) {
+      totRec += falta(p);
+      rbox.appendChild(el("div", { class: "item" }, [
+        el("div", { class: "top" }, [
+          el("div", null, [
+            el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
+            el("div", { class: "meta", text: p.nome + " × " + p.qtd + " · " + dataBR(p.criado) + " · " + nomeStatus(p.status || "fila").toLowerCase() }),
+            el("div", { class: "meta", text: [p.telefone, p.whatsapp && p.whatsapp !== p.telefone ? p.whatsapp : ""].filter(Boolean).join(" · ") })
+          ]),
+          el("div", { class: "val" }, [brl.format(falta(p)), el("div", { class: "meta", text: recebido(p) > 0 ? "sinal " + brl.format(recebido(p)) : "de " + brl.format(p.valorTotal || 0) })])
+        ]),
+        el("div", { class: "acts" }, [el("button", { type: "button", class: "go", text: "Receber pagamento", onclick: function () { abrirPag(p); } })])
+      ]));
+    });
+    $("v-rec-tot").textContent = brl.format(totRec);
+    $("v-rec-box").hidden = !devendo.length;
+    var formas = {};
+    todos.forEach(function (p) {
+      pagamentos(p).forEach(function (x) {
+        if (atual !== "todos" && chaveMes(x.data) !== atual) return;
+        var k = x.forma || "Forma não informada"; formas[k] = (formas[k] || 0) + (x.valor || 0);
+      });
+    });
+    var fbox = $("v-formas"); fbox.textContent = "";
+    var ks = Object.keys(formas).sort(function (a, b) { return formas[b] - formas[a]; }), totF = 0;
+    ks.forEach(function (k) { totF += formas[k]; fbox.appendChild(el("div", { class: "ln" }, [el("span", { text: k }), el("span", { text: brl.format(formas[k]) })])); });
+    if (ks.length > 1) fbox.appendChild(el("div", { class: "ln sub" }, [el("span", { text: "Total" }), el("span", { text: brl.format(totF) })]));
+    $("v-formas-box").hidden = !ks.length;
     var top = {};
     lista.forEach(function (p) {
       var k = (p.nome || "Peça sem nome").trim().toLowerCase();
@@ -1562,7 +1699,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     r.readAsText(arq);
   });
 
-  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); renderSelect(); renderEstoque(); renderAlerta(); renderCotacoes(); renderPedidos(); renderVendas(); }
+  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderAlerta(); renderCotacoes(); renderPedidos(); renderVendas(); }
   renderTudo();
   iniciarDados();
 })();
