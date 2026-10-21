@@ -74,6 +74,9 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .ln:last-child { border-bottom: 0; }
 .ln span:last-child { font-family: var(--f-num); white-space: nowrap; }
 .ln.sub { font-weight: 600; border-bottom-style: solid; }
+.ln small { display: block; color: var(--muted); font-size: 12px; }
+.ln > span:last-child { text-align: right; }
+h3.sub3 { font: 600 13px var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 18px 0 4px; }
 .ln .op { color: var(--muted); font-size: 12px; margin-left: 6px; font-family: var(--f-body); font-weight: 400; }
 .ln.total { font-weight: 600; color: var(--accent); font-size: 16px; }
 
@@ -508,6 +511,22 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="graf-x" id="v-graf-x" aria-hidden="true"></div>
       <p class="hint" id="v-graf-info"></p>
     </section>
+    <section id="v-neg-box" hidden>
+      <h2>Estudo das negociações</h2>
+      <div class="kpis">
+        <div class="kpi"><span class="k2">Vendas a preço cheio</span><b id="vn-cheio">–</b></div>
+        <div class="kpi"><span class="k2">Vendido de fato</span><b id="vn-vendido">–</b></div>
+        <div class="kpi"><span class="k2">Deixamos de ganhar</span><b id="vn-cedido" style="color:var(--warn)">–</b></div>
+        <div class="kpi"><span class="k2">Lucro efetivo</span><b id="vn-lucro" class="pos">–</b></div>
+      </div>
+      <p class="hint" id="vn-resumo"></p>
+      <h3 class="sub3">Como fechamos cada venda</h3>
+      <div id="vn-tipos" class="lines"></div>
+      <h3 class="sub3">Cotações do período</h3>
+      <div id="vn-cot" class="lines"></div>
+      <div id="vn-cli-box" hidden><h3 class="sub3">Quem recebeu mais desconto</h3><div id="vn-cli" class="lines"></div></div>
+      <p class="hint" id="vn-nota"></p>
+    </section>
     <section id="v-rec-box" hidden>
       <div class="shead"><h2>Contas a receber</h2><b id="v-rec-tot" style="font:500 16px var(--f-num);color:var(--warn)"></b></div>
       <p class="hint">Todos os pedidos com valor faltando, de qualquer mês.</p>
@@ -841,6 +860,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("b-tempo").textContent = hm(t * q);
     ultimo = { unit: final, total: total, q: q, peso: peso * q, tempo: t * q,
       custo: custo * q + embTotal, embalagem: embTotal, frete: frete, impostos: comMargem * imp / 100 * q, margem: m, desp: dp };
+    // preço cheio e escolha combinada, para o estudo das negociações
+    var rCheio = conta(vBase), negou = v.m !== vBase.m;
+    Object.assign(ultimo, { cheio: rCheio.total, lucroCheio: lucroDe(vBase, rCheio), margemCheia: vBase.m,
+      negTipo: negou ? neg.tipo : "venda", negDesc: negou && rCheio.total > 0 ? Math.round((1 - total / rCheio.total) * 1000) / 10 : 0 });
     [].forEach.call($("chips").children, function (b) { b.setAttribute("aria-pressed", parse(b.dataset.m) === vBase.m); });
     medirLucro(vBase, v, r);
   }
@@ -1411,6 +1434,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       cliente: $("sv-cliente").value.trim(), telefone: $("sv-tel").value.trim(), prazo: $("sv-prazo").value,
       whatsapp: $("cli-whats").value.trim(), email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
       frete: frete, valorPecas: u.total, valorUnit: u.unit, valorTotal: u.total + frete,
+      valorCheio: u.cheio, lucroCheio: u.lucroCheio, margemCheia: u.margemCheia, negTipo: u.negTipo, negDesc: u.negDesc,
       custo: u.custo, impostos: u.impostos, margem: u.margem, desperdicio: u.desp,
       pesoTotal: u.peso, tempoTotal: u.tempo,
       filamentoId: f ? f.id : "", filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
@@ -1678,6 +1702,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     $("v-cores-box").hidden = !lista.length;
     renderGrafico(todos, atual);
+    renderNegociacoes(lista, atual);
     var devendo = todos.filter(function (p) { return falta(p) > 0; }), totRec = 0, rbox = $("v-rec"); rbox.textContent = "";
     devendo.forEach(function (p) {
       totRec += falta(p);
@@ -1734,10 +1759,68 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           ]),
           el("div", { class: "val" }, [brl.format(p.valorTotal), el("div", { class: "meta", text: "lucro " + brl.format(l) })])
         ]),
+        p.valorCheio > 0 && p.valorCheio - (p.valorPecas || 0) > 0.005 ? el("div", { class: "meta", text: (NOMES_NEG[p.negTipo] || "Desconto") + ": preço cheio " + brl.format(p.valorCheio) + ", cedido " + brl.format(p.valorCheio - p.valorPecas) + (p.lucroCheio != null ? " · lucro no cheio " + brl.format(p.lucroCheio) : "") }) : null,
         el("div", { class: "meta", text: "Custo " + brl.format(p.custo) + " · impostos " + brl.format(p.impostos) + " · frete " + brl.format(p.frete || 0) + " · " + kg(p.pesoTotal) + " · " + hm(p.tempoTotal) })
       ]));
     });
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: pronto ? "Nenhuma venda neste período." : "Carregando vendas…" }));
+  }
+
+  // Estudo das negociações: preço cheio × preço fechado, lucro cedido, escolhas de preço e cotações
+  function renderNegociacoes(lista, atual) {
+    var t = { cheio: 0, vend: 0, luc: 0, lucC: 0, semDados: 0 }, tipos = {}, clis = {};
+    lista.forEach(function (p) {
+      var vend = p.valorPecas || 0, luc = vend - (p.custo || 0) - (p.impostos || 0);
+      var tem = p.valorCheio > 0, cheio = tem ? p.valorCheio : vend, lucC = tem && p.lucroCheio != null ? p.lucroCheio : luc;
+      var tipo = tem ? (NOMES_NEG[p.negTipo] ? p.negTipo : "venda") : "antes";
+      if (!tem) t.semDados++;
+      t.cheio += cheio; t.vend += vend; t.luc += luc; t.lucC += lucC;
+      var o = tipos[tipo] = tipos[tipo] || { n: 0, cheio: 0, vend: 0, luc: 0 };
+      o.n++; o.cheio += cheio; o.vend += vend; o.luc += luc;
+      if (cheio - vend > 0.005) { var k = p.cliente || "Sem cliente"; clis[k] = (clis[k] || 0) + cheio - vend; }
+    });
+    var cedido = t.cheio - t.vend;
+    $("vn-cheio").textContent = brl.format(t.cheio);
+    $("vn-vendido").textContent = brl.format(t.vend);
+    $("vn-cedido").textContent = brl.format(cedido) + (t.cheio > 0 ? " (" + Math.round(cedido / t.cheio * 100) + "%)" : "");
+    $("vn-lucro").textContent = brl.format(t.luc);
+    $("vn-resumo").textContent = lista.length ? "No preço cheio o lucro seria " + brl.format(t.lucC) + ". Com as negociações ficou " + brl.format(t.luc) +
+      (t.lucC > 0 ? " (" + Math.round(t.luc / t.lucC * 100) + "% do possível)" : "") + ". Todo desconto sai do lucro, porque custo e impostos não mudam." : "";
+    var tb = $("vn-tipos"); tb.textContent = "";
+    ["venda", "favoravel", "minimo", "desconto", "antes"].forEach(function (k) {
+      var o = tipos[k]; if (!o) return;
+      var nome = k === "antes" ? "Antes do estudo" : NOMES_NEG[k];
+      tb.appendChild(el("div", { class: "ln" }, [
+        el("span", null, [nome + " · " + o.n + (o.n === 1 ? " venda" : " vendas"), el("small", { text: o.cheio - o.vend > 0.005 ? "cedido " + brl.format(o.cheio - o.vend) + " (" + Math.round((1 - o.vend / o.cheio) * 100) + "%)" : "sem desconto" })]),
+        el("span", null, [brl.format(o.vend), el("small", { text: "lucro " + brl.format(o.luc) + (o.vend > 0 ? " · " + Math.round(o.luc / o.vend * 100) + "%" : "") })])
+      ]));
+    });
+    // cotações criadas no período
+    var cots = Object.keys(cache.cotacoes).map(function (k) { return cache.cotacoes[k]; })
+      .filter(function (c) { return atual === "todos" || chaveMes(c.criado) === atual; });
+    var st = { pedido: { n: 0, v: 0 }, perdida: { n: 0, v: 0 }, aberta: { n: 0, v: 0 } }, negPerd = {};
+    cots.forEach(function (c) {
+      var s = st[c.status || "aberta"] || st.aberta, val = c.valorTotal || 0;
+      s.n++; s.v += val;
+      if (c.status === "perdida") { var k = NOMES_NEG[c.negTipo || (c.entradas && c.entradas.negTipo)] ? (c.negTipo || c.entradas.negTipo) : "venda"; negPerd[k] = (negPerd[k] || 0) + 1; }
+    });
+    var cb = $("vn-cot"); cb.textContent = "";
+    var decididas = st.pedido.n + st.perdida.n;
+    [["Viraram venda", st.pedido], ["Perdidas", st.perdida], ["Ainda em aberto", st.aberta]].forEach(function (x) {
+      cb.appendChild(el("div", { class: "ln" }, [el("span", { text: x[0] + " · " + x[1].n }), el("span", { text: brl.format(x[1].v) })]));
+    });
+    cb.appendChild(el("div", { class: "ln sub" }, [el("span", { text: "Taxa de fechamento" }),
+      el("span", { text: decididas ? Math.round(st.pedido.n / decididas * 100) + "% das decididas" : "–" })]));
+    var kp = Object.keys(negPerd);
+    if (kp.length) cb.appendChild(el("div", { class: "ln" }, [el("span", { text: "Perdidas oferecidas a" }),
+      el("span", { text: kp.map(function (k) { return NOMES_NEG[k].toLowerCase() + " " + negPerd[k]; }).join(" · ") })]));
+    var cl = $("vn-cli"); cl.textContent = "";
+    var ks = Object.keys(clis).sort(function (a, b) { return clis[b] - clis[a]; }).slice(0, 5);
+    ks.forEach(function (k) { cl.appendChild(el("div", { class: "ln" }, [el("span", { text: k }), el("span", { text: brl.format(clis[k]) })])); });
+    $("vn-cli-box").hidden = !ks.length;
+    $("vn-nota").textContent = (t.semDados ? t.semDados + (t.semDados === 1 ? " venda antiga foi registrada antes deste estudo e conta" : " vendas antigas foram registradas antes deste estudo e contam") + " como preço cheio. " : "") +
+      "Valores das peças, sem frete. Cotações perdidas mostram quanto deixou de entrar.";
+    $("v-neg-box").hidden = !(lista.length || cots.length);
   }
 
   // Gráfico: entradas (barra clara) e lucro (barra escura) dos últimos 6 meses; tocar num mês abre esse período
@@ -1784,6 +1867,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
       valorUnit: u.unit, valorTotal: u.total, frete: u.frete, custo: u.custo, pesoTotal: u.peso, tempoTotal: u.tempo,
       margem: u.margem, filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
+      valorCheio: u.cheio, negTipo: u.negTipo, negDesc: u.negDesc,
       entradas: e, assinatura: assinatura(e), status: status || "aberta", pedidoNumero: pedidoNumero || 0
     };
   }
