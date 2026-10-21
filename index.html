@@ -185,6 +185,11 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .rank .r .bx { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--bg); overflow: hidden; }
 .rank .r .bx i { display: block; height: 100%; background: var(--accent); border-radius: 0 3px 3px 0; }
 .rank .r span:nth-child(2) { font-family: var(--f-num); white-space: nowrap; }
+.alerta { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); background: var(--warn-soft); color: var(--ink); border-radius: 10px; padding: 10px 12px; font: 400 14px/1.35 var(--f-body); cursor: pointer; }
+.alerta b { color: var(--warn); font-weight: 600; }
+.alerta .ic { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--warn); color: #fff; display: grid; place-items: center; font: 700 14px var(--f-display); }
+.tabs button { position: relative; }
+.tabs button .ponto { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--surface); }
 .bar .k { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--bar-muted); }
 .bar .big { font: 700 36px/1.05 var(--f-display); font-variant-numeric: tabular-nums; }
 .bar .side { text-align: right; font-size: 12.5px; color: var(--bar-muted); font-variant-numeric: tabular-nums; }
@@ -197,6 +202,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   <header>
     <div class="brand" aria-label="Baksa.3d"><span class="layers" aria-hidden="true"></span><span class="wm">Baksa<span class="dot">.</span><span class="d3">3d</span></span></div>
   </header>
+
+  <button type="button" class="alerta" id="alerta-est" hidden><span class="ic" aria-hidden="true">!</span><span id="alerta-txt"></span></button>
 
   <nav class="tabs" role="tablist" aria-label="Seções">
     <button type="button" role="tab" id="t-custo" aria-controls="tab-custo" aria-selected="true">Custo</button>
@@ -458,6 +465,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="field"><label for="f-peso">Peso no carretel</label><div class="inp"><input id="f-peso" inputmode="decimal" value="1000"><span class="u">g</span></div></div>
       <div class="field"><label for="f-valor">Valor do carretel</label><div class="inp"><span class="pre">R$</span><input id="f-valor" inputmode="decimal"></div></div>
     </div>
+    <div class="field"><label for="f-min">Avisar quando ficar abaixo de</label><div class="inp"><input id="f-min" inputmode="decimal" value="250"><span class="u">g</span></div>
+      <p class="hint">O app mostra um aviso no topo quando este filamento chegar nesse peso.</p></div>
     <div class="field" id="f-qtd-box"><label for="f-qtd">Quantidade de carretéis</label><div class="inp"><input id="f-qtd" inputmode="decimal" value="1"><span class="u">un</span></div>
       <p class="hint" id="f-qtd-hint">Pode usar fração para carretel aberto (ex.: 1,5).</p></div>
     <p class="hint err" id="f-erro" aria-live="polite"></p>
@@ -851,6 +860,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     document.querySelector(".wrap").classList.toggle("sem-bar", nome !== "custo");
     try { localStorage.setItem("baksa3d.aba", nome); } catch (e) {}
     if (nome === "cotacoes" && typeof renderCotacoes === "function") renderCotacoes();
+    if (typeof renderAlerta === "function") renderAlerta();
     window.scrollTo(0, 0);
   }
   ABAS.forEach(function (a) { $("t-" + a).addEventListener("click", function () { abrirAba(a); }); });
@@ -908,7 +918,29 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   /* ---------- Estoque ---------- */
-  var LIMITE_BAIXO = 250; // g
+  var LIMITE_BAIXO = 250; // g, quando o filamento não tem aviso próprio
+  function minimo(f) { return f.minimo != null ? f.minimo : LIMITE_BAIXO; }
+  // Pedidos ainda não impressos: o peso deles já saiu do estoque quando a venda foi registrada
+  function separado(f) {
+    var g = 0, n = 0;
+    Object.keys(cache.pedidos).forEach(function (k) {
+      var p = cache.pedidos[k];
+      if (p.filamentoId === f.id && (p.status === "fila" || !p.status) && p.baixa) { g += p.baixa; n++; }
+    });
+    return { g: g, n: n };
+  }
+  function renderAlerta() {
+    var baixos = listaFil().filter(function (f) { return f.gramas < minimo(f); });
+    var naAba = !$("tab-estoque").hidden;
+    $("alerta-est").hidden = !baixos.length || naAba;
+    $("t-estoque").textContent = "Estoque";
+    if (baixos.length) $("t-estoque").appendChild(el("span", { class: "ponto", "aria-label": "filamento acabando" }));
+    var box = $("alerta-txt"); box.textContent = "";
+    if (!baixos.length) return;
+    box.appendChild(el("b", { text: baixos.length === 1 ? "Filamento acabando: " : baixos.length + " filamentos acabando: " }));
+    box.appendChild(document.createTextNode(baixos.slice(0, 3).map(function (f) { return [f.tipo, f.cor].filter(Boolean).join(" ") + " (" + kg(Math.max(0, f.gramas)) + ")"; }).join(", ") + (baixos.length > 3 ? " e mais " + (baixos.length - 3) : "") + ". Toque para ver o estoque."));
+  }
+  $("alerta-est").addEventListener("click", function () { abrirAba("estoque"); });
   var filEditando = null;
   function listaFil() {
     return Object.keys(cache.filamentos).map(function (k) { return cache.filamentos[k]; })
@@ -924,6 +956,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("f-peso").value = numN.format(f ? f.pesoCarretel : 1000);
     $("f-valor").value = f ? numN.format(f.valorCarretel) : "";
     $("f-qtd").value = numN.format(f ? Math.round(f.gramas / f.pesoCarretel * 100) / 100 : 1);
+    $("f-min").value = numN.format(minimo(f || {}));
     $("f-qtd-hint").textContent = f ? "Estoque atual em carretéis. Mudar aqui corrige o peso em estoque." : "Pode usar fração para carretel aberto (ex.: 1,5).";
     $("f-erro").textContent = "";
     abrirSheet("sh-fil");
@@ -938,7 +971,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     if (valor <= 0) { $("f-erro").textContent = "Informe o valor pago no carretel."; return; }
     var f = filEditando ? Object.assign({}, filEditando) : { criado: Date.now() };
     f.marca = $("f-marca").value.trim(); f.tipo = $("f-tipo").value.trim(); f.cor = $("f-cor").value.trim();
-    f.hex = $("f-hex").value; f.pesoCarretel = peso; f.valorCarretel = valor;
+    f.hex = $("f-hex").value; f.pesoCarretel = peso; f.valorCarretel = valor; f.minimo = Math.max(0, Math.round(parse($("f-min").value)));
     var novoG = Math.round(qtdC * peso);
     if (!filEditando || Math.abs(novoG - filEditando.gramas) > 1 || peso !== filEditando.pesoCarretel) f.gramas = novoG;
     var id = filEditando ? filEditando.id : novoId();
@@ -970,7 +1003,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var totG = 0, totV = 0;
     lista.forEach(function (f) {
       totG += Math.max(0, f.gramas); totV += Math.max(0, f.gramas) / 1000 * porKg(f);
-      var carr = f.gramas / f.pesoCarretel, baixo = f.gramas < LIMITE_BAIXO;
+      var carr = f.gramas / f.pesoCarretel, baixo = f.gramas < minimo(f), sep = separado(f);
       var pct = Math.max(0, Math.min(100, (f.gramas % f.pesoCarretel || (f.gramas > 0 ? f.pesoCarretel : 0)) / f.pesoCarretel * 100));
       box.appendChild(el("div", { class: "item" }, [
         el("div", { class: "top" }, [
@@ -982,7 +1015,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           el("div", { class: "val" }, [kg(f.gramas), el("div", { class: "meta", text: "≈ " + num2.format(carr) + " carr." })])
         ]),
         el("div", { class: "bar-est" + (baixo ? " baixo" : ""), title: "Carretel em uso" }, [el("i", { style: "width:" + pct + "%" })]),
-        baixo ? el("div", null, [el("span", { class: "pill warn", text: f.gramas <= 0 ? "Sem estoque" : "Acabando" })]) : null,
+        baixo ? el("div", null, [el("span", { class: "pill warn", text: f.gramas <= 0 ? "Sem estoque" : "Acabando" }), el("span", { class: "meta", text: "  aviso abaixo de " + kg(minimo(f)) })]) : null,
+        sep.n ? el("div", { class: "meta", text: kg(sep.g) + " já separados para " + sep.n + (sep.n === 1 ? " pedido aguardando impressão" : " pedidos aguardando impressão") + " (já descontados do peso acima)." }) : null,
         el("div", { class: "acts" }, [
           el("button", { type: "button", text: "+ Entrada", onclick: function () { entradaFil(f); } }),
           el("button", { type: "button", text: "Ajustar peso", onclick: function () { pesarFil(f); } }),
@@ -1450,7 +1484,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     r.readAsText(arq);
   });
 
-  function renderTudo() { renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderVendas(); }
+  function renderTudo() { renderSelect(); renderEstoque(); renderAlerta(); renderCotacoes(); renderPedidos(); renderVendas(); }
   renderTudo();
   iniciarDados();
 })();
