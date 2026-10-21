@@ -206,6 +206,13 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .foto { flex: none; width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); background: var(--bg); padding: 0; cursor: zoom-in; overflow: hidden; }
 .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .foto-g { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 10px; background: var(--bg); }
+.lucro { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.lucro .slhead b.warn { color: var(--warn); }
+.medidor { position: relative; height: 10px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); overflow: visible; }
+.medidor i { display: block; height: 100%; border-radius: 5px; background: var(--accent); }
+.medidor i.warn { background: var(--warn); }
+.medidor .marca { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); border-radius: 1px; }
+.ln.ok > span:last-child { color: var(--accent); font-weight: 600; }
 .linha-btn { display: flex; flex-wrap: wrap; gap: 8px; }
 .bar .k { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--bar-muted); }
 .bar .big { font: 700 36px/1.05 var(--f-display); font-variant-numeric: tabular-nums; }
@@ -355,6 +362,22 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="lines" id="box-tfrete" hidden>
       <div class="ln total"><span>Total com frete</span><span id="r-tfrete"></span></div>
     </div>
+    <div class="lucro" id="box-lucro">
+      <div class="slhead"><span class="lbl">Lucro do pedido</span><b id="l-valor"></b></div>
+      <div class="medidor" aria-hidden="true"><i id="l-bar"></i><span class="marca" id="l-marca" title="Lucro no preço mínimo"></span></div>
+      <p class="hint" id="l-info"></p>
+      <div class="lines">
+        <div class="ln ok"><span>Preço favorável sugerido <span class="op" id="l-fav-op"></span></span><span id="l-fav"></span></div>
+        <div class="ln"><span>Preço mínimo <span class="op" id="l-min-op"></span></span><span id="l-min"></span></div>
+      </div>
+      <div class="field" id="l-sim-box">
+        <div class="slhead"><label for="l-desc">Simular desconto</label><b id="l-desc-v">0%</b></div>
+        <input type="range" id="l-desc" min="0" max="20" step="1" value="0">
+        <p class="hint" id="l-sim"></p>
+        <button type="button" class="reset" id="l-aplicar" hidden>Aplicar desconto</button>
+      </div>
+      <p class="hint">Lucro = valor das peças − custo de produção − impostos (frete fora). O desconto entra na margem, então cotação e venda já saem com o preço novo.</p>
+    </div>
     <div class="row2">
       <button type="button" class="big-btn sec" id="salvar-cot">Salvar cotação</button>
       <button type="button" class="big-btn" id="abrir-venda">Registrar venda</button>
@@ -375,6 +398,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           <div class="inp"><span class="pre">R$</span><input id="deprec" inputmode="decimal"><span class="u">por hora</span></div></div>
         <div class="field"><label for="impostos">Impostos</label>
           <div class="inp"><input id="impostos" inputmode="decimal"><span class="u">%</span></div></div>
+        <div class="field"><label for="margemMin">Margem mínima para desconto</label>
+          <div class="inp"><span class="pre">×</span><input id="margemMin" inputmode="decimal"></div>
+          <p class="hint">O preço mínimo usa esta margem. Abaixo dela o app avisa que o desconto aperta demais.</p></div>
         <p class="hint">Esses valores ficam salvos neste celular.</p>
         <button type="button" class="reset" id="reset">Voltar aos valores da planilha (margem ×5, desperdício 30%)</button>
       </div>
@@ -580,6 +606,25 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   </div>
 </div>
 
+<div class="sheet" id="sh-cli" hidden role="dialog" aria-modal="true" aria-labelledby="ec-titulo">
+  <form class="card" id="ec-form" novalidate>
+    <h3 id="ec-titulo">Dados do cliente</h3>
+    <p class="hint" id="ec-sub"></p>
+    <div class="field"><label for="ec-nome">Nome</label><div class="inp"><input id="ec-nome" class="txt" autocomplete="off" placeholder="Nome do cliente"></div></div>
+    <div class="row2">
+      <div class="field"><label for="ec-tel">Telefone</label><div class="inp"><input id="ec-tel" class="txt" type="tel" inputmode="tel" autocomplete="off"></div></div>
+      <div class="field"><label for="ec-whats">WhatsApp</label><div class="inp"><input id="ec-whats" class="txt" type="tel" inputmode="tel" autocomplete="off"></div></div>
+    </div>
+    <div class="field"><label for="ec-email">E-mail</label><div class="inp"><input id="ec-email" class="txt" type="email" inputmode="email" autocomplete="off"></div></div>
+    <div class="field"><label for="ec-resumo">Resumo da conversa</label><textarea id="ec-resumo" rows="3"></textarea></div>
+    <p class="hint">Nada aqui é obrigatório. Complete quando tiver os dados.</p>
+    <div class="d-acoes">
+      <button type="submit" class="primary">Salvar</button>
+      <button type="button" id="ec-cancelar">Cancelar</button>
+    </div>
+  </form>
+</div>
+
 <div class="sheet" id="sh-conf" hidden role="dialog" aria-modal="true" aria-labelledby="c-titulo">
   <div class="card">
     <h3 id="c-titulo"></h3>
@@ -630,7 +675,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
 <script>
 (function () {
-  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, margem: 5, impostos: 15 };
+  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, margem: 5, impostos: 15, margemMin: 3 };
   var DESP_PADRAO = 30;
   var KEY = "custo3d.v1";
   var $ = function (id) { return document.getElementById(id); };
@@ -656,7 +701,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var ultimo = {};
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
   var PECA = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
-  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "margem", "impostos"];
+  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "margem", "impostos", "margemMin"];
 
   function carregar() {
     var s = null;
@@ -742,7 +787,49 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     ultimo = { unit: final, total: total, q: q, peso: peso * q, tempo: t * q,
       custo: custo * q + embTotal, embalagem: embTotal, frete: frete, impostos: comMargem * imp / 100 * q, margem: m, desp: dp };
     [].forEach.call($("chips").children, function (b) { b.setAttribute("aria-pressed", parse(b.dataset.m) === m); });
+    medirLucro(v, r);
   }
+
+  // Lucro do pedido e quanto dá para descontar sem descer da margem mínima (embalagem e frete ficam fora do desconto)
+  var calcLucro = null;
+  function lucroDe(v, r) { return r.total - (r.custo * v.q + v.emb) - r.comMargem * v.imp / 100 * v.q; }
+  function medirLucro(v, r) {
+    $("box-lucro").hidden = !(r.total > 0);
+    if (!(r.total > 0)) return;
+    var mMin = parse($("margemMin").value), lucro = lucroDe(v, r), pct = lucro / r.total;
+    var rMin = conta(Object.assign({}, v, { m: mMin })), lMin = lucroDe(v, rMin);
+    var rFav = conta(Object.assign({}, v, { m: (v.m + mMin) / 2 }));
+    var folga = v.m > mMin && r.total > rMin.total;
+    $("l-valor").textContent = brl.format(lucro); $("l-valor").className = folga ? "" : "warn";
+    $("l-bar").style.width = Math.max(0, Math.min(100, pct * 100)) + "%"; $("l-bar").className = folga ? "" : "warn";
+    $("l-marca").style.left = Math.max(0, Math.min(100, lMin / rMin.total * 100)) + "%";
+    $("l-info").textContent = Math.round(pct * 100) + "% do valor das peças fica de lucro" + (folga ? "." : ". A margem está igual ou abaixo da mínima (×" + numN.format(mMin) + "): não dá desconto sem apertar.");
+    $("l-fav").textContent = folga ? brl.format(rFav.total) : "–";
+    $("l-fav-op").textContent = folga ? Math.round((1 - rFav.total / r.total) * 100) + "% de desconto · lucro " + brl.format(lucroDe(v, rFav)) : "";
+    $("l-min").textContent = brl.format(rMin.total);
+    $("l-min-op").textContent = "margem ×" + numN.format(mMin) + " · lucro " + brl.format(lMin);
+    var max = folga ? Math.floor((1 - rMin.total / r.total) * 100) : 0;
+    $("l-sim-box").hidden = max < 1;
+    $("l-desc").max = Math.max(1, max);
+    if (Number($("l-desc").value) > max) $("l-desc").value = max;
+    var d = Number($("l-desc").value) / 100;
+    calcLucro = null;
+    $("l-desc-v").textContent = Math.round(d * 100) + "%";
+    if (!d) { $("l-sim").textContent = "Arraste para ver o preço e o lucro com desconto. Máximo seguro: " + max + "%."; $("l-aplicar").hidden = true; return; }
+    var parte = r.total - v.emb, novaM = parte > 0 ? v.m * (r.total * (1 - d) - v.emb) / parte : v.m;
+    var rD = conta(Object.assign({}, v, { m: novaM }));
+    $("l-sim").textContent = "Com " + Math.round(d * 100) + "% de desconto: total " + brl.format(rD.total) + " (cliente economiza " + brl.format(r.total - rD.total) + ") e lucro " + brl.format(lucroDe(v, rD)) + ".";
+    $("l-aplicar").hidden = false;
+    $("l-aplicar").textContent = "Aplicar " + Math.round(d * 100) + "% de desconto (margem vira ×" + numN.format(Math.round(novaM * 100) / 100) + ")";
+    calcLucro = novaM;
+  }
+  $("l-desc").addEventListener("input", calcular);
+  $("l-aplicar").addEventListener("click", function () {
+    if (calcLucro == null) return;
+    var d = $("l-desc").value; $("l-desc").value = 0;
+    setMargem(calcLucro);
+    toast("Desconto de " + d + "% aplicado. A cotação e a venda usam o preço novo.");
+  });
 
   function setMargem(v) {
     v = Math.max(0, Math.round(v * 100) / 100);
@@ -973,11 +1060,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function porKg(f) { return f.pesoCarretel > 0 ? f.valorCarretel / f.pesoCarretel * 1000 : 0; }
   function abrirSheet(id) { $(id).hidden = false; }
   function fecharSheet(id) { $(id).hidden = true; }
-  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto"].forEach(function (id) {
+  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) fecharSheet(id); });
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto"].forEach(fecharSheet);
+    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli"].forEach(fecharSheet);
   });
 
   // confirmação dentro da página (o app não usa janelas do navegador)
@@ -1332,6 +1419,27 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
   }
 
+  /* ---------- Editar os dados do cliente depois (pedido ou cotação) ---------- */
+  var cliEditando = null; // { col, id }
+  function editarCliente(col, x) {
+    cliEditando = { col: col, id: x.id };
+    $("ec-sub").textContent = col === "pedidos" ? "Pedido nº " + x.numero + " · " + x.nome + " × " + x.qtd : "Cotação de " + dataBR(x.criado) + " · " + x.nome + " × " + x.qtd;
+    $("ec-nome").value = x.cliente || ""; $("ec-tel").value = x.telefone || ""; $("ec-whats").value = x.whatsapp || "";
+    $("ec-email").value = x.email || ""; $("ec-resumo").value = x.resumo || "";
+    abrirSheet("sh-cli");
+  }
+  $("ec-cancelar").addEventListener("click", function () { fecharSheet("sh-cli"); });
+  $("ec-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var ed = cliEditando, x = ed && cache[ed.col][ed.id]; if (!x) { fecharSheet("sh-cli"); return; }
+    var d = { cliente: $("ec-nome").value.trim(), telefone: $("ec-tel").value.trim(), whatsapp: $("ec-whats").value.trim(),
+      email: $("ec-email").value.trim(), resumo: $("ec-resumo").value.trim() };
+    var novo = Object.assign({}, x, d);
+    // na cotação, os campos guardados também mudam, para aparecerem certos ao abrir no Custo
+    if (ed.col === "cotacoes" && x.entradas) novo.entradas = Object.assign({}, x.entradas, { "cli-nome": d.cliente, "cli-tel": d.telefone, "cli-whats": d.whatsapp, "cli-email": d.email, "cli-resumo": d.resumo });
+    gravar(ed.col, ed.id, novo).then(function () { fecharSheet("sh-cli"); toast("Dados do cliente salvos."); });
+  });
+
   /* ---------- Pagamentos: sinal, quanto falta e forma ---------- */
   // Pedidos antigos só tinham "pago" (sim/não): pago vira um pagamento do valor todo, sem forma informada
   function pagamentos(p) { return Array.isArray(p.pagamentos) ? p.pagamentos : p.pago ? [{ valor: p.valorTotal || 0, forma: "", data: p.criado }] : []; }
@@ -1446,6 +1554,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           idx > 0 ? el("button", { type: "button", text: "Voltar etapa", onclick: function () { mudarStatus(p, STATUS[idx - 1].id); } }) : null,
           p.status !== "entregue" ? el("button", { type: "button", text: p.prazo ? "Mudar prazo" : "Pôr prazo", onclick: function () { editarPrazo(p); } }) : null,
           el("button", { type: "button", text: falta(p) ? "Receber pagamento" : "Ver pagamentos", onclick: function () { abrirPag(p); } }),
+          el("button", { type: "button", text: p.cliente ? "Editar cliente" : "Pôr cliente", onclick: function () { editarCliente("pedidos", p); } }),
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () { excluirPed(p); } })
         ])
       ]));
@@ -1703,6 +1812,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           !virou && !perdida ? el("button", { type: "button", class: "go", text: "Transformar em pedido", onclick: function () {
             carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click();
           } }) : null,
+          el("button", { type: "button", text: c.cliente ? "Editar cliente" : "Pôr cliente", onclick: function () { editarCliente("cotacoes", c); } }),
           el("button", { type: "button", text: "Abrir no custo", onclick: function () { carregarCotacao(c); abrirAba("custo"); toast("Cotação carregada na aba Custo."); } }),
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () {
             confirmar("Excluir cotação?", c.nome + " × " + c.qtd + " · " + brl.format(vTotal + vFrete), [
