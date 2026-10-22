@@ -1052,7 +1052,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
   // Etiquetas: interesses (peça e cliente) e datas comemorativas (peça; o cliente herda ao comprar)
   var TAGS = [["Gatos", "🐱"], ["Cachorros", "🐶"], ["Casa e decoração", "🏠"], ["Plantas e jardim", "🌱"], ["Cozinha", "🍳"], ["Games e geek", "🎮"], ["Futebol e esportes", "⚽"],
-    ["Infantil e brinquedos", "🧸"], ["Carros e motos", "🚗"], ["Ferramentas e oficina", "🔧"], ["Escritório e brindes", "💼"]];
+    ["Infantil e brinquedos", "🧸"], ["Carros e motos", "🚗"], ["Ferramentas e oficina", "🔧"], ["Escritório e brindes", "💼"], ["Industrial", "🏭"]];
   var DATAS = [["Carnaval", "🎭"], ["Páscoa", "🐰"], ["Dia das Mães", "💐"], ["Dia dos Namorados", "❤️"], ["Festa Junina", "🌽"], ["Dia dos Pais", "👔"], ["Dia das Crianças", "🪁"], ["Halloween", "🎃"], ["Black Friday", "🏷️"], ["Natal e Ano Novo", "🎄"]];
   function emojiTag(t) { var a = TAGS.concat(DATAS).filter(function (x) { return x[0] === t; })[0]; return a ? a[1] : "🔖"; }
   function rotTag(t) { return emojiTag(t) + " " + t; }
