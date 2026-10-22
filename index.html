@@ -140,6 +140,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .chips.peq button { padding: 5px 11px; font: 500 13px var(--f-body); }
 .chips button .n { opacity: .7; margin-left: 4px; }
 .chips button.auto { border-style: dashed; }
+.nome-sug { display: grid; gap: 6px; }
+.nome-sug button { display: flex; gap: 8px; align-items: center; text-align: left; border: 1px dashed var(--accent); background: transparent; color: var(--ink); border-radius: 10px; padding: 8px 10px; font: 500 14px var(--f-body); cursor: pointer; min-width: 0; }
+.nome-sug button b { color: var(--accent); white-space: nowrap; margin-left: auto; }
+.nome-sug button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cores { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.cores i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--line); }
 .oferta { border: 1px solid var(--accent); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
 .box { border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; margin-top: 10px; }
 .box.cad { padding: 10px 12px; }
@@ -335,6 +341,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <button type="button" role="tab" id="t-feitos" aria-controls="tab-feitos" aria-selected="false">O que já fiz</button>
     <button type="button" role="tab" id="t-custo" aria-controls="tab-custo" aria-selected="true">Custo</button>
     <button type="button" role="tab" id="t-cotacoes" aria-controls="tab-cotacoes" aria-selected="false">Cotações</button>
+    <button type="button" role="tab" id="t-produtos" aria-controls="tab-produtos" aria-selected="false">Produtos</button>
     <button type="button" role="tab" id="t-clientes" aria-controls="tab-clientes" aria-selected="false">Clientes</button>
     <button type="button" role="tab" id="t-fila" aria-controls="tab-fila" aria-selected="false">Fila</button>
     <button type="button" role="tab" id="t-pedidos" aria-controls="tab-pedidos" aria-selected="false">Pedidos</button>
@@ -352,6 +359,20 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="feito-top" id="ft-top"></div>
     <div id="ft-lista" class="linha"></div>
     <p class="hint center" id="ft-hist"></p>
+  </div>
+
+  <div id="tab-produtos" role="tabpanel" aria-labelledby="t-produtos" class="panel" hidden>
+    <div class="kpis">
+      <div class="kpi"><span class="k2">Produtos</span><b id="pr-n">–</b></div>
+      <div class="kpi"><span class="k2">Vendidos mais de uma vez</span><b id="pr-volta">–</b></div>
+    </div>
+    <div class="field">
+      <label for="cat-busca">Buscar</label>
+      <div class="inp"><input id="cat-busca" class="txt" type="search" autocomplete="off" placeholder="Nome do produto"></div>
+    </div>
+    <div id="cat-lista" class="lista"></div>
+    <p class="hint center">Toda peça que vira pedido entra aqui sozinha. Toque em Orçar para preencher a aba Custo com tempo, peso e filamento; os dados do cliente continuam como estão e o preço segue os custos de hoje.</p>
+    <input type="file" id="cat-foto-arq" accept="image/*" hidden>
   </div>
 
   <div id="tab-clientes" role="tabpanel" aria-labelledby="t-clientes" class="panel" hidden>
@@ -419,13 +440,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   <section aria-labelledby="h-peca">
     <div class="shead"><h2 id="h-peca">Dados da peça</h2><button type="button" class="mini" id="limpar">Limpar para nova peça</button></div>
     <div class="linha-btn">
-      <button type="button" class="mini" id="cat-abrir">Usar peça do catálogo</button>
-      <button type="button" class="mini" id="cat-salvar">Salvar no catálogo</button>
+      <button type="button" class="mini" id="cat-abrir">Escolher produto</button>
+      <button type="button" class="mini" id="cat-salvar">Salvar como produto</button>
     </div>
 
     <div class="field">
       <label for="nome">Nome da peça</label>
       <div class="inp"><input id="nome" class="txt" autocomplete="off" placeholder="Ex.: Suporte de motor" value="Suporte de motor"></div>
+      <div id="nome-sug" class="nome-sug" hidden></div>
     </div>
     <div class="field">
       <span class="lbl">Etiquetas da peça (opcional)</span>
@@ -788,17 +810,6 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <button type="button" class="primary" id="sv-ok">Confirmar venda</button>
       <button type="button" id="sv-cancelar">Cancelar</button>
     </div>
-  </div>
-</div>
-
-<div class="sheet" id="sh-cat" hidden role="dialog" aria-modal="true" aria-labelledby="cat-titulo">
-  <div class="card">
-    <h3 id="cat-titulo">Catálogo de peças</h3>
-    <p class="hint">Peças que você vende sempre. Toque em Usar para preencher a aba Custo; os dados do cliente e o frete continuam como estão. O preço segue os custos de hoje.</p>
-    <div class="inp"><input id="cat-busca" class="txt" type="search" autocomplete="off" placeholder="Buscar peça" aria-label="Buscar peça"></div>
-    <div id="cat-lista" class="lista"></div>
-    <div class="vbtns"><button type="button" id="cat-fechar">Fechar</button></div>
-    <input type="file" id="cat-foto-arq" accept="image/*" hidden>
   </div>
 </div>
 
@@ -1460,7 +1471,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
   /* ---------- Abas ---------- */
   // Botões de baixo = etapas do trabalho; abas de cima = o que tem dentro de cada etapa, na ordem do processo
-  var CATS = { bussola: ["sugestoes", "feitos"], vender: ["custo", "cotacoes", "clientes"], produzir: ["fila", "pedidos", "estoque"], receber: ["receber", "vendas"] };
+  var CATS = { bussola: ["sugestoes", "feitos"], vender: ["custo", "cotacoes", "produtos", "clientes"], produzir: ["fila", "pedidos", "estoque"], receber: ["receber", "vendas"] };
   var ABAS = [].concat(CATS.bussola, CATS.vender, CATS.produzir, CATS.receber);
   var ultimaDaCat = {};
   try { ultimaDaCat = JSON.parse(localStorage.getItem("baksa3d.abasCat") || "{}") || {}; } catch (e) {}
@@ -1516,11 +1527,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function porKg(f) { return f.pesoCarretel > 0 ? f.valorCarretel / f.pesoCarretel * 1000 : 0; }
   function abrirSheet(id) { $(id).hidden = false; }
   function fecharSheet(id) { $(id).hidden = true; }
-  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha", "sh-cad"].forEach(function (id) {
+  ["sh-fil", "sh-venda", "sh-conf", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha", "sh-cad"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) fecharSheet(id); });
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha", "sh-cad"].forEach(fecharSheet);
+    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha", "sh-cad"].forEach(fecharSheet);
   });
 
   // confirmação dentro da página (o app não usa janelas do navegador)
@@ -1838,6 +1849,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       if (f) return gravar("filamentos", f.id, Object.assign({}, f, { gramas: Math.round(f.gramas - u.peso) }));
     }).then(function () {
       return marcarCotacaoPedido(p);
+    }).then(function () {
+      return registrarProduto(p);
     }).then(function () {
       fecharSheet("sh-venda");
       toast("Pedido nº " + p.numero + " registrado" + (f ? " e " + kg(u.peso) + " baixados do estoque." : "."));
@@ -3181,72 +3194,113 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     fecharSheet("sh-orc"); toast(envia ? "Orçamento " + d.numero + " pronto para enviar. O texto também foi copiado." : "Orçamento " + d.numero + " gerado.");
   });
 
-  /* ---------- Catálogo de peças salvas ---------- */
+  /* ---------- Produtos (catálogo): cada peça é um produto único; só muda cor/filamento ---------- */
   var CAMPOS_CAT = ["nome", "pc-tags", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem"];
   function listaCat() {
     return Object.keys(cache.catalogo).map(function (k) { return cache.catalogo[k]; })
       .sort(function (a, b) { return (a.nome || "").localeCompare(b.nome || "", "pt-BR"); });
   }
-  function gravarCat(id, nome) {
-    var e = { modo: modo, filSel: $("fil-sel").value };
+  function produtoPorNome(nome) { var n = normTxt(nome); return n ? listaCat().filter(function (c) { return normTxt(c.nome) === n; })[0] : null; }
+  // Histórico do produto: os pedidos com o mesmo nome (qualquer cliente)
+  function vendasProd(c) {
+    var n = normTxt(c.nome), peds = listaPed().filter(function (p) { return normTxt(p.nome) === n; });
+    var quem = [], cores = [], vistos = {}, vc = {};
+    peds.forEach(function (p) {
+      var q = p.empresa || p.cliente; if (q && !vistos[normTxt(q)]) { vistos[normTxt(q)] = 1; quem.push(q); }
+      if (p.filamento && !vc[p.filamento]) { vc[p.filamento] = 1; cores.push({ nome: p.filamento, hex: p.hex }); }
+    });
+    var ult = peds[peds.length - 1];
+    return { n: peds.length, pecas: peds.reduce(function (t, p) { return t + (p.qtd || 1); }, 0), quem: quem, cores: cores, ultimo: ult };
+  }
+  function gravarCat(id, nome, quieto) {
+    var e = { modo: modo, filSel: $("fil-sel").value, imp: imp };
     CAMPOS_CAT.forEach(function (k) { e[k] = $(k).value; });
     calcular();
     var u = ultimo, f = filAtual();
-    var item = { nome: nome, criado: Date.now(), entradas: e, qtd: u.q, pesoTotal: u.peso, tempoTotal: u.tempo,
+    var velho = id && cache.catalogo[id];
+    var item = { nome: nome, criado: velho && velho.criado || Date.now(), entradas: e, qtd: u.q, pesoTotal: u.peso, tempoTotal: u.tempo,
       filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "" };
-    if (id && cache.catalogo[id] && cache.catalogo[id].foto) item.foto = cache.catalogo[id].foto;
-    return gravar("catalogo", id || novoId(), item).then(function () { toast("“" + nome + "” salva no catálogo."); });
+    if (velho && velho.foto) item.foto = velho.foto;
+    return gravar("catalogo", id || novoId(), item).then(function () { if (!quieto) toast("“" + nome + "” salvo nos produtos."); });
+  }
+  // Virou pedido, virou produto (se ainda não existe com esse nome)
+  function registrarProduto(p) {
+    if (!p.nome || p.nome === "Peça sem nome" || produtoPorNome(p.nome)) return Promise.resolve();
+    return gravarCat(null, p.nome, true);
   }
   $("cat-salvar").addEventListener("click", function () {
     var nome = $("nome").value.trim();
-    if (!nome) { toast("Dê um nome para a peça antes de salvar no catálogo."); $("nome").focus(); return; }
-    var igual = listaCat().filter(function (c) { return (c.nome || "").toLowerCase() === nome.toLowerCase(); })[0];
+    if (!nome) { toast("Dê um nome para a peça antes de salvar como produto."); $("nome").focus(); return; }
+    var igual = produtoPorNome(nome);
     if (!igual) { gravarCat(null, nome); return; }
-    confirmar("Já existe “" + igual.nome + "” no catálogo", "Quer trocar pelos dados de agora ou guardar as duas?", [
-      { texto: "Trocar pela de agora", classe: "primary", acao: function () { gravarCat(igual.id, nome); } },
-      { texto: "Guardar as duas", acao: function () { gravarCat(null, nome); } }
+    confirmar("“" + igual.nome + "” já é um produto", "Quer atualizar o produto com o tempo, o peso e o filamento de agora?", [
+      { texto: "Atualizar", classe: "primary", acao: function () { gravarCat(igual.id, igual.nome); } },
+      { texto: "Deixar como está", acao: function () {} }
     ]);
   });
+  var prodUsado = "";
   function usarCat(c) {
+    var linha = $("cli-linha").value;
     carregarCotacao({ id: null, entradas: c.entradas });
-    cotAtual = null;
-    fecharSheet("sh-cat"); abrirAba("custo");
-    toast("“" + c.nome + "” carregada. Confira a quantidade.");
+    $("cli-linha").value = linha;
+    $("nome").value = c.nome; prodUsado = normTxt(c.nome);
+    cotAtual = null; salvar(); sugNome();
+    abrirAba("custo");
+    toast("“" + c.nome + "” carregado. Escolha a cor e confira a quantidade.");
   }
-  function renderCatalogo() {
-    var busca = $("cat-busca").value.trim().toLowerCase(), box = $("cat-lista"); box.textContent = "";
-    var lista = listaCat().filter(function (c) { return !busca || (c.nome || "").toLowerCase().indexOf(busca) > -1; });
+  // Ao escrever o nome da peça, sugere produtos que já existem
+  function sugNome() {
+    var box = $("nome-sug"), n = normTxt($("nome").value); box.textContent = "";
+    var lista = n.length < 2 || n === prodUsado ? [] : listaCat().filter(function (c) { return normTxt(c.nome).indexOf(n) > -1; })
+      .sort(function (a, b) { return (normTxt(b.nome) === n) - (normTxt(a.nome) === n) || vendasProd(b).n - vendasProd(a).n; }).slice(0, 3);
     lista.forEach(function (c) {
-      var r = precoCot(c), e = c.entradas || {}, f = e.filSel && cache.filamentos[e.filSel];
-      var q = Math.max(1, Math.round(parse(e.qtd)) || 1);
+      var v = vendasProd(c);
+      box.appendChild(el("button", { type: "button", onclick: function () { usarCat(c); } }, [
+        el("span", { text: "Já temos: " + c.nome + (v.n ? " (vendido " + v.n + "x)" : "") }), el("b", { text: "Usar" })
+      ]));
+    });
+    box.hidden = !lista.length;
+  }
+  $("nome").addEventListener("input", function () { prodUsado = ""; sugNome(); });
+  function renderCatalogo() {
+    var busca = normTxt($("cat-busca").value), box = $("cat-lista"); box.textContent = "";
+    var todos = listaCat().map(function (c) { return { c: c, v: vendasProd(c) }; });
+    $("pr-n").textContent = todos.length;
+    $("pr-volta").textContent = todos.filter(function (x) { return x.v.n > 1; }).length;
+    var lista = todos.filter(function (x) { return !busca || normTxt(x.c.nome).indexOf(busca) > -1; })
+      .sort(function (a, b) { return b.v.n - a.v.n || (a.c.nome || "").localeCompare(b.c.nome || "", "pt-BR"); });
+    lista.forEach(function (x) {
+      var c = x.c, v = x.v, r = precoCot(c), e = c.entradas || {}, f = e.filSel && cache.filamentos[e.filSel];
       box.appendChild(el("div", { class: "item" }, [
         el("div", { class: "top" }, [
           c.foto ? el("button", { type: "button", class: "foto", "aria-label": "Ver foto de " + c.nome, onclick: function () { verFoto(c); } }, [el("img", { src: c.foto, alt: "" })])
             : (f || c.hex) ? el("span", { class: "spool", style: "--sw:" + (f ? f.hex || "#888" : c.hex), "aria-hidden": "true" }) : null,
           el("div", null, [
             el("h4", { text: c.nome }),
-            el("div", { class: "meta", text: (f ? filLabel(f) : c.filamento ? c.filamento + " (fora do estoque)" : "Preço manual") }),
-            el("div", { class: "meta", text: kg(parse(e.peso)) + " · " + hm(e.modo === "dec" ? parse(e.decimal) : parse(e.horas) + parse(e.minutos) / 60) + " por peça · margem ×" + numN.format(parse(e.margem)) })
+            el("div", { class: "meta", text: kg(parse(e.peso)) + " · " + hm(e.modo === "dec" ? parse(e.decimal) : parse(e.horas) + parse(e.minutos) / 60) + " por peça" }),
+            el("div", { class: "meta", text: v.n ? "Vendido " + v.n + (v.n > 1 ? " vezes" : " vez") + " (" + v.pecas + (v.pecas > 1 ? " peças" : " peça") + ") · último " + brl.format(v.ultimo.valorUnit || 0) + " cada" : "Ainda não vendido" })
           ]),
-          el("div", { class: "val" }, [r ? brl.format(r.final) : "–", el("div", { class: "meta", text: q > 1 ? "cada, em " + q + " peças" : "por peça" })])
+          el("div", { class: "val" }, [r ? brl.format(r.final) : "–", el("div", { class: "meta", text: "hoje, por peça" })])
         ]),
+        v.cores.length ? el("div", { class: "meta cores" }, v.cores.map(function (k) { return el("span", null, [el("i", { style: "background:" + (k.hex || "#888") }), k.nome]); })) : null,
+        v.quem.length ? el("div", { class: "meta", text: "Quem comprou: " + v.quem.join(", ") }) : null,
         el("div", { class: "acts" }, [
-          el("button", { type: "button", class: "go", text: "Usar", onclick: function () { usarCat(c); } }),
+          el("button", { type: "button", class: "go", text: "Orçar", onclick: function () { usarCat(c); } }),
           el("button", { type: "button", text: c.foto ? "Trocar foto" : "Pôr foto", onclick: function () { fotoPara = c.id; $("cat-foto-arq").click(); } }),
           c.foto ? el("button", { type: "button", text: "Tirar foto", onclick: function () {
-            confirmar("Tirar a foto?", "A foto de " + c.nome + " sai do catálogo. A peça continua.", [
+            confirmar("Tirar a foto?", "A foto de " + c.nome + " sai. O produto continua.", [
               { texto: "Tirar a foto", classe: "danger", acao: function () { var d = Object.assign({}, c); delete d.foto; gravar("catalogo", c.id, d).then(function () { toast("Foto retirada."); }); } }
             ]);
           } }) : null,
           el("button", { type: "button", class: "del", text: "Excluir", onclick: function () {
-            confirmar("Tirar do catálogo?", c.nome + " sai do catálogo. Cotações e pedidos já feitos continuam.", [
-              { texto: "Excluir", classe: "danger", acao: function () { apagar("catalogo", c.id).then(function () { toast("Peça tirada do catálogo."); abrirSheet("sh-cat"); }); } }
+            confirmar("Excluir o produto?", c.nome + " sai da lista de produtos. Cotações e pedidos já feitos continuam.", [
+              { texto: "Excluir", classe: "danger", acao: function () { apagar("catalogo", c.id).then(function () { toast("Produto excluído."); }); } }
             ]);
           } })
         ])
       ]));
     });
-    if (!lista.length) box.appendChild(el("div", { class: "empty", text: busca ? "Nenhuma peça encontrada." : "O catálogo está vazio. Preencha uma peça na aba Custo e toque em “Salvar no catálogo”." }));
+    if (!lista.length) box.appendChild(el("div", { class: "empty", text: busca ? "Nenhum produto encontrado." : "Ainda não há produtos. Toda peça que virar pedido entra aqui sozinha." }));
   }
   // Foto da peça: reduzida no próprio celular para caber numa célula da planilha (limite de 50 mil caracteres)
   var fotoPara = null;
@@ -3281,9 +3335,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   });
   function verFoto(c) { $("ft-nome").textContent = c.nome; $("ft-img").src = c.foto; $("ft-img").alt = "Foto de " + c.nome; abrirSheet("sh-foto"); }
   $("ft-fechar").addEventListener("click", function () { fecharSheet("sh-foto"); });
-  $("cat-abrir").addEventListener("click", function () { $("cat-busca").value = ""; renderCatalogo(); abrirSheet("sh-cat"); });
+  $("cat-abrir").addEventListener("click", function () { $("cat-busca").value = ""; renderCatalogo(); abrirAba("produtos"); });
   $("cat-busca").addEventListener("input", renderCatalogo);
-  $("cat-fechar").addEventListener("click", function () { fecharSheet("sh-cat"); });
 
   /* ---------- Backup (versão sem login) ---------- */
   $("bk-exp").addEventListener("click", function () {
@@ -3763,7 +3816,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     d.liga = (velho.liga || []).concat(ed.liga || []).filter(function (k, i, a) { return a.indexOf(k) === i; });
     gravar("clientes", id, Object.assign({}, velho, d)).then(function () { cliAberto = "id:" + id; fecharSheet("sh-cad"); renderClientes(); toast("Cadastro salvo."); });
   });
-  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); renderSugestoes(); renderFeitos(); renderClientes(); renderTagsPeca(); pontosNav(); }
+  function renderTudo() { renderCatalogo(); sugNome(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); renderSugestoes(); renderFeitos(); renderClientes(); renderTagsPeca(); pontosNav(); }
   renderTudo();
   iniciarDados();
 })();
