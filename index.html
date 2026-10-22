@@ -671,10 +671,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   </div>
 
   <div id="tab-vendas" role="tabpanel" aria-labelledby="t-vendas" class="panel" hidden>
-    <div class="field">
-      <label for="v-mes">Período</label>
+    <div class="seg" role="group" aria-label="Período" id="v-per" style="grid-template-columns:repeat(4,1fr)">
+      <button type="button" data-p="mes" aria-pressed="true">Mês</button><button type="button" data-p="u3" aria-pressed="false">3 meses</button><button type="button" data-p="u6" aria-pressed="false">6 meses</button><button type="button" data-p="ano" aria-pressed="false">Ano</button>
+    </div>
+    <div class="field" id="v-mes-box">
+      <label for="v-mes">Mês</label>
       <div class="selwrap"><select id="v-mes"></select></div>
     </div>
+    <p class="hint" id="v-per-info" hidden></p>
     <div class="kpis k4">
       <div class="kpi"><span class="k2">Entradas (com frete)</span><b id="v-fat">–</b></div>
       <div class="kpi"><span class="k2">Lucro estimado</span><b id="v-lucro">–</b></div>
@@ -2137,7 +2141,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   });
   function renderFalhas(pedidos, atual) {
     var todas = Object.keys(cache.falhas || {}).map(function (k) { return cache.falhas[k]; })
-      .filter(function (x) { return atual === "todos" || chaveMes(x.data) === atual; })
+      .filter(function (x) { return noPeriodo(x.data, atual); })
       .sort(function (a, b) { return b.data - a.data; });
     $("v-falhas-box").hidden = !todas.length;
     if (!todas.length) return;
@@ -2456,17 +2460,41 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
   function chaveMes(ms) { var d = new Date(ms); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2); }
   $("v-mes").addEventListener("change", renderVendas);
+  // Período do resumo: um mês (AAAA-MM), últimos 3 ou 6 meses (u3/u6), o ano corrente (ano) ou tudo (todos)
+  var perVendas = "mes";
+  try { perVendas = localStorage.getItem("baksa3d.periodo") || "mes"; } catch (e) {}
+  [].forEach.call($("v-per").children, function (b) { b.addEventListener("click", function () {
+    perVendas = b.dataset.p; try { localStorage.setItem("baksa3d.periodo", perVendas); } catch (e) {} renderVendas();
+  }); });
+  function inicioPeriodo(atual) {
+    var h = new Date();
+    if (atual === "u3" || atual === "u6") return chaveMes(new Date(h.getFullYear(), h.getMonth() - (atual === "u3" ? 2 : 5), 1).getTime());
+    if (atual === "ano") return h.getFullYear() + "-01";
+    return null;
+  }
+  function noPeriodo(ms, atual) {
+    if (atual === "todos") return true;
+    var i = inicioPeriodo(atual); return i ? chaveMes(ms) >= i : chaveMes(ms) === atual;
+  }
   function renderVendas() {
-    var todos = listaPed(), sel = $("v-mes"), atual = sel.value || chaveMes(Date.now());
+    [].forEach.call($("v-per").children, function (b) { b.setAttribute("aria-pressed", b.dataset.p === perVendas); });
+    $("v-mes-box").hidden = perVendas !== "mes";
+    var todos = listaPed(), sel = $("v-mes"), atual = perVendas === "mes" ? sel.value || chaveMes(Date.now()) : perVendas;
     var meses = {}; meses[chaveMes(Date.now())] = 1;
     todos.forEach(function (p) { meses[chaveMes(p.criado)] = 1; });
+    for (var m = 1; m < 12; m++) { var dm = new Date(); meses[chaveMes(new Date(dm.getFullYear(), dm.getMonth() - m, 1).getTime())] = 1; }
     sel.textContent = "";
     Object.keys(meses).sort().reverse().forEach(function (k) {
       var p = k.split("-"); sel.appendChild(el("option", { value: k, text: MESES[+p[1] - 1] + " de " + p[0] }));
     });
     sel.appendChild(el("option", { value: "todos", text: "Todo o período" }));
-    sel.value = atual;
-    var lista = todos.filter(function (p) { return atual === "todos" || chaveMes(p.criado) === atual; });
+    if (perVendas === "mes") sel.value = atual;
+    else if (!sel.value) sel.value = chaveMes(Date.now());
+    if (perVendas === "mes" && sel.value !== atual) atual = sel.value;
+    var ini = inicioPeriodo(atual), hj = new Date();
+    $("v-per-info").hidden = !ini;
+    if (ini) $("v-per-info").textContent = "De " + MESES[+ini.split("-")[1] - 1].toLowerCase() + " de " + ini.split("-")[0] + " até hoje.";
+    var lista = todos.filter(function (p) { return noPeriodo(p.criado, atual); });
     var fat = 0, lucro = 0, receber = 0, g = 0, pecas = 0, horas = 0, porFil = {};
     lista.forEach(function (p) {
       fat += p.valorTotal || 0;
@@ -2533,7 +2561,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var formas = {};
     todos.forEach(function (p) {
       pagamentos(p).forEach(function (x) {
-        if (atual !== "todos" && chaveMes(x.data) !== atual) return;
+        if (!noPeriodo(x.data, atual)) return;
         var k = x.forma || "Forma não informada"; formas[k] = (formas[k] || 0) + (x.valor || 0);
       });
     });
@@ -2607,7 +2635,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     // cotações criadas no período
     var cots = Object.keys(cache.cotacoes).map(function (k) { return cache.cotacoes[k]; })
-      .filter(function (c) { return atual === "todos" || chaveMes(c.criado) === atual; });
+      .filter(function (c) { return noPeriodo(c.criado, atual); });
     var st = { pedido: { n: 0, v: 0 }, perdida: { n: 0, v: 0 }, aberta: { n: 0, v: 0 } }, negPerd = {};
     cots.forEach(function (c) {
       var s = st[c.status || "aberta"] || st.aberta, val = c.valorTotal || 0;
@@ -2635,8 +2663,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
   // Gráfico: entradas (barra clara) e lucro (barra escura) dos últimos 6 meses; tocar num mês abre esse período
   function renderGrafico(todos, atual) {
-    var hoje = new Date(), meses = [];
-    for (var i = 5; i >= 0; i--) meses.push(chaveMes(new Date(hoje.getFullYear(), hoje.getMonth() - i, 1).getTime()));
+    var hoje = new Date(), meses = [], nM = atual === "ano" ? Math.max(6, hoje.getMonth() + 1) : 6;
+    $("h-graf").textContent = nM > 6 ? "Este ano" : "Últimos 6 meses";
+    for (var i = nM - 1; i >= 0; i--) meses.push(chaveMes(new Date(hoje.getFullYear(), hoje.getMonth() - i, 1).getTime()));
     var dados = {}; meses.forEach(function (k) { dados[k] = { ent: 0, luc: 0, n: 0 }; });
     todos.forEach(function (p) {
       var d = dados[chaveMes(p.criado)]; if (!d) return;
@@ -2648,7 +2677,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       var d = dados[k], nomeMes = MESES[+k.split("-")[1] - 1];
       var hE = max ? d.ent / max * 100 : 0, hL = max ? Math.max(0, d.luc) / max * 100 : 0;
       var desc = nomeMes + ": entradas " + brl.format(d.ent) + ", lucro " + brl.format(d.luc) + ", " + d.n + (d.n === 1 ? " venda" : " vendas");
-      box.appendChild(el("button", { type: "button", title: desc, "aria-label": desc, "aria-pressed": k === atual, onclick: function () { $("v-mes").value = k; renderVendas(); } }, [
+      box.appendChild(el("button", { type: "button", title: desc, "aria-label": desc, "aria-pressed": noPeriodo(new Date(+k.split("-")[0], +k.split("-")[1] - 1, 15).getTime(), atual), onclick: function () { perVendas = "mes"; $("v-mes").value = k; renderVendas(); } }, [
         el("span", { class: "b-ent", style: "height:" + (d.ent > 0 ? Math.max(hE, 2) : 0) + "%" }),
         el("span", { class: "b-luc", style: "height:" + (d.luc > 0 ? Math.max(hL, 2) : 0) + "%" }),
         k === atual && d.ent > 0 ? el("span", { class: "vl", style: "bottom:calc(" + hE + "% + 4px)", text: brl.format(d.ent).replace(/,\d\d$/, "") }) : null
@@ -2656,6 +2685,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       eixo.appendChild(el("span", { class: k === atual ? "sel" : "", text: nomeMes.slice(0, 3) }));
     });
     var a = dados[atual];
+    if (inicioPeriodo(atual)) {
+      var s = { ent: 0, luc: 0, n: 0 }; meses.forEach(function (k) { if (k >= inicioPeriodo(atual)) { s.ent += dados[k].ent; s.luc += dados[k].luc; s.n += dados[k].n; } });
+      $("v-graf-info").textContent = "No período: entradas " + brl.format(s.ent) + " · lucro " + brl.format(s.luc) + " · " + s.n + (s.n === 1 ? " venda" : " vendas") + ". Toque num mês para ver só ele."; return;
+    }
     $("v-graf-info").textContent = a ? MESES[+atual.split("-")[1] - 1] + ": entradas " + brl.format(a.ent) + " · lucro " + brl.format(a.luc) + " · " + a.n + (a.n === 1 ? " venda" : " vendas") : "Toque num mês para ver os detalhes dele.";
   }
 
