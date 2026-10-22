@@ -146,6 +146,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .cad { display: grid; gap: 4px; font-size: 14px; }
 .cad .k { color: var(--muted); font-size: 12px; }
 .linha .st.toque { cursor: pointer; }
+.linha .st.atraso .c { background: var(--warn); }
+.linha .st.futuro .c { background: var(--surface); border: 2px solid var(--accent); }
+.linha .st .mini-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.linha .st small.warn { color: var(--warn); }
+.linha .st .mini-acts a, .linha .st .mini-acts button { text-decoration: none; }
+.rec-g { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 2px 6px; font: 600 13px var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.rec-g.warn { color: var(--warn); }
 .item.realce { box-shadow: 0 0 0 3px var(--accent); }
 .vfases { display: grid; padding: 4px 0 0; }
 .vf { display: flex; gap: 10px; position: relative; padding-bottom: 12px; }
@@ -383,8 +390,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
   <div id="tab-receber" role="tabpanel" aria-labelledby="t-receber" class="panel" hidden>
     <section id="v-rec-box" hidden>
-      <div class="shead"><h2>Contas a receber</h2><b id="v-rec-tot" style="font:500 16px var(--f-num);color:var(--warn)"></b></div>
-      <p class="hint">Todos os pedidos com valor faltando, de qualquer mês.</p>
+      <div class="kpis">
+        <div class="kpi"><span class="k2">Para entrar este mês</span><b id="v-rec-mes">–</b></div>
+        <div class="kpi"><span class="k2">Total a receber</span><b id="v-rec-tot">–</b></div>
+      </div>
+      <p class="hint">Organizado pela data em que cada valor deve entrar. Atrasado em cima.</p>
       <div id="v-rec" class="lista"></div>
     </section>
     <div class="empty" id="rec-vazio">Nada a receber. Todos os pedidos estão pagos.</div>
@@ -2227,6 +2237,24 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     }
     return "";
   }
+  // O que falta receber de um pedido, em parcelas com data (venc em ms; null = na entrega, sem data marcada)
+  function parcelas(p) {
+    var tot = p.valorTotal || 0, cri = p.criado || Date.now(), L = [];
+    var entrega = p.status === "entregue" ? (p.em_entregue || cri) : p.prazo ? new Date(+p.prazo.slice(0, 4), p.prazo.slice(5, 7) - 1, +p.prazo.slice(8, 10), 12).getTime() : null;
+    if (p.condicao === "pj") [0, 21, 42].forEach(function (d, i) { L.push({ v: tot / 3, venc: cri + d * 864e5, rotulo: i ? (i + 1) + "ª parcela" : "Entrada" }); });
+    else if (p.condicao === "avista") L.push({ v: tot, venc: cri, rotulo: "Pagamento antecipado" });
+    else if (p.condicao === "pf") { L.push({ v: centavos(tot / 2), venc: cri, rotulo: "Entrada (50%)" }); L.push({ v: tot - centavos(tot / 2), venc: entrega, rotulo: "Saldo na entrega" }); }
+    else L.push({ v: tot, venc: entrega, rotulo: "Pagamento" });
+    // o que já entrou abate as parcelas na ordem
+    var rec = recebido(p);
+    return L.map(function (x) { var usa = Math.min(rec, x.v); rec -= usa; return { valor: centavos(x.v - usa), venc: x.venc, rotulo: x.rotulo }; })
+      .filter(function (x) { return x.valor > 0.005; });
+  }
+  function linkCobrar(p, x) {
+    var nome = (cadDe(p) || {}).apelido || (p.empresa && normTxt(p.empresa) === normTxt(p.cliente) ? "" : String(p.cliente || "").split(" ")[0]), h = new Date(); h.setHours(0, 0, 0, 0);
+    var quando = x.venc == null ? "" : x.venc < h.getTime() ? ", que venceu em " + dataBR(x.venc).slice(0, 5) : ", que vence em " + dataBR(x.venc).slice(0, 5);
+    return waLink(p.whatsapp || p.telefone, "Oi" + (nome ? " " + nome : "") + "! Tudo bem? Passando para lembrar do pagamento do pedido nº " + p.numero + " (" + p.nome + "): " + x.rotulo.toLowerCase() + " de " + brl.format(x.valor) + quando + ".\nChave Pix: 47-99196-4555 (C6)\nQualquer coisa, estou à disposição. Obrigado!");
+  }
   function falta(p) { var f = centavos((p.valorTotal || 0) - recebido(p)); return f > 0.005 ? f : 0; }
   function textoPago(p) {
     var r = recebido(p), fl = falta(p);
@@ -2465,22 +2493,41 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     renderGrafico(todos, atual);
     renderFalhas(lista, atual);
     renderNegociacoes(lista, atual);
-    var devendo = todos.filter(function (p) { return falta(p) > 0; }), totRec = 0, rbox = $("v-rec"); rbox.textContent = "";
+    var devendo = todos.filter(function (p) { return falta(p) > 0; }), totRec = 0, totMes = 0, rbox = $("v-rec"); rbox.textContent = "";
+    // cada valor que falta vira uma parcela com data; as parcelas se agrupam por quando devem entrar
+    var hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0); var h0 = hoje0.getTime(), fimMes = new Date(hoje0.getFullYear(), hoje0.getMonth() + 1, 1).getTime();
+    var GR = [["atraso", "Atrasado"], ["semana", "Esta semana"], ["depois", "Próximas semanas"], ["entrega", "Na entrega (sem data)"]], grupos = {};
     devendo.forEach(function (p) {
-      totRec += falta(p);
-      rbox.appendChild(el("div", { class: "item" }, [
-        el("div", { class: "top" }, [
-          el("div", null, [
-            el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
-            el("div", { class: "meta", text: p.nome + " × " + p.qtd + " · " + dataBR(p.criado) + " · " + nomeStatus(p.status || "fila").toLowerCase() }),
-            el("div", { class: "meta", text: [p.telefone, p.whatsapp && p.whatsapp !== p.telefone ? p.whatsapp : ""].filter(Boolean).join(" · ") }),
-            textoCond(p) ? el("div", { class: "meta" + (/vencida/.test(textoCond(p)) ? " warn" : ""), text: textoCond(p) }) : null
-          ]),
-          el("div", { class: "val" }, [brl.format(falta(p)), el("div", { class: "meta", text: recebido(p) > 0 ? "sinal " + brl.format(recebido(p)) : "de " + brl.format(p.valorTotal || 0) })])
-        ]),
-        el("div", { class: "acts" }, [el("button", { type: "button", class: "go", text: "Receber pagamento", onclick: function () { abrirPag(p); } })])
-      ]));
+      parcelas(p).forEach(function (x) {
+        totRec += x.valor;
+        var g = x.venc == null ? "entrega" : x.venc < h0 ? "atraso" : x.venc < h0 + 7 * 864e5 ? "semana" : "depois";
+        if (x.venc != null && x.venc < fimMes) totMes += x.valor;
+        (grupos[g] = grupos[g] || []).push({ p: p, x: x });
+      });
     });
+    GR.forEach(function (gr) {
+      var L = grupos[gr[0]]; if (!L) return;
+      L.sort(function (a, b) { return (a.x.venc || 0) - (b.x.venc || 0); });
+      rbox.appendChild(el("div", { class: "rec-g" + (gr[0] === "atraso" ? " warn" : "") }, [el("span", { text: gr[1] }), el("span", { text: brl.format(L.reduce(function (s, i) { return s + i.x.valor; }, 0)) })]));
+      var linha = el("div", { class: "linha" });
+      L.forEach(function (i) {
+        var p = i.p, x = i.x, wl = linkCobrar(p, x);
+        linha.appendChild(el("div", { class: "st " + (gr[0] === "atraso" ? "atraso" : gr[0] === "semana" ? "" : "futuro") }, [
+          el("span", { class: "c", "aria-hidden": "true", text: gr[0] === "atraso" ? "!" : "" }),
+          el("div", null, [
+            el("b", { text: (p.cliente || "Sem cliente") + " · " + brl.format(x.valor) }),
+            el("small", { class: gr[0] === "atraso" ? "warn" : "", text: (x.venc == null ? "" : x.venc < h0 ? "Venceu " + dataBR(x.venc).slice(0, 5) + " · " : x.venc < h0 + 864e5 ? "Hoje · " : dataBR(x.venc).slice(0, 5) + " · ") + x.rotulo }),
+            el("small", { text: "nº " + p.numero + " " + p.nome + " · " + nomeStatus(p.status || "fila").toLowerCase() }),
+            el("div", { class: "mini-acts" }, [
+              wl ? el("a", { class: "mini", href: wl, target: "_blank", rel: "noopener", text: "Cobrar no WhatsApp" }) : null,
+              el("button", { type: "button", class: "mini", text: "Receber", onclick: function () { abrirPag(p); } })
+            ])
+          ])
+        ]));
+      });
+      rbox.appendChild(linha);
+    });
+    $("v-rec-mes").textContent = brl.format(totMes);
     $("v-rec-tot").textContent = brl.format(totRec);
     $("v-rec-box").hidden = !devendo.length; $("rec-vazio").hidden = !!devendo.length || !pronto;
     var formas = {};
