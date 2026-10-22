@@ -2731,7 +2731,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         ]),
         el("div", { class: "acts" }, [el("span", { class: "pill" + (perdida ? " warn" : ""), text: virou ? "Virou pedido nº " + c.pedidoNumero : perdida ? "Não fechou" : "Em aberto" })]),
         el("div", { class: "acts" }, [
-          perdida ? el("button", { type: "button", text: "Reabrir", onclick: function () { marcarCot(c, { status: "aberta", retorno: Date.now() }, "Cotação reaberta."); } }) : null,
+          perdida ? el("button", { type: "button", text: "Reabrir", onclick: function () { marcarCot(c, { status: "aberta", retorno: Date.now(), enviado: Date.now(), alos: 0 }, "Cotação reaberta."); } }) : null,
           !virou && !perdida ? el("button", { type: "button", class: "go", text: "Transformar em pedido", onclick: function () {
             carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click();
           } }) : null,
@@ -2770,33 +2770,55 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     return Promise.all(ps).then(function () { if (msg) toast(msg); });
   }
+  // Ritmo de retorno (Giba): 1º alô 2 dias depois do envio, 2º alô com 5 dias, com 10 dias perguntar se não fechou
+  var RITMO = [2, 5, 10];
+  function alosCot(c) { return c.alos || 0; }
+  function diasEnvio(c) { return diasDesde(c.enviado || c.criado); }
+  // 0 = esperando; 1 = hora do 1º alô; 2 = hora do 2º alô; 3 = perguntar se não fechou
+  function etapaCot(c) {
+    var a = Math.min(alosCot(c), 2);
+    return diasEnvio(c) >= RITMO[a] ? a + 1 : 0;
+  }
+  function textoEtapa(c) {
+    var e = etapaCot(c), a = alosCot(c), d = diasEnvio(c);
+    var base = (c.enviado ? "enviado " : "cotado ") + (d === 0 ? "hoje" : d === 1 ? "ontem" : "há " + d + " dias") + (a ? " · " + a + (a === 1 ? " alô" : " alôs") : "");
+    if (e === 1) return base + " · hora do 1º alô";
+    if (e === 2) return base + " · hora do 2º alô";
+    if (e === 3) return base + " · marcar como não fechou?";
+    var prox = RITMO[Math.min(a, 2)] - d;
+    return base + (a < 2 ? " · " + (a + 1) + "º alô em " + prox + (prox === 1 ? " dia" : " dias") : " · " + prox + (prox === 1 ? " dia" : " dias") + " para decidir");
+  }
   function linkWhats(c, valor) {
     var n = String(c.whatsapp || c.telefone || "").replace(/\D/g, "");
     if (n.length < 10) return "";
     if (n.length <= 11) n = "55" + n;
-    var txt = "Olá" + (c.cliente ? " " + c.cliente.split(" ")[0] : "") + "! Aqui é da Baksa.3d. Passando para saber se você decidiu sobre o orçamento de " + c.nome + " (" + c.qtd + (c.qtd === 1 ? " peça" : " peças") + ", " + brl.format(valor) + "). Posso ajudar em alguma coisa?";
+    var nome = c.cliente ? " " + c.cliente.split(" ")[0] : "", peca = c.nome + " (" + c.qtd + (c.qtd === 1 ? " peça" : " peças") + ", " + brl.format(valor) + ")";
+    var txt = alosCot(c) >= 1
+      ? "Oi" + nome + "! Passando de novo sobre o orçamento de " + peca + ". Quer que eu ajuste algo, prazo ou quantidade? Consigo adaptar para caber no que você precisa."
+      : "Oi" + nome + "! Tudo bem? Conseguiu ver o orçamento de " + peca + "? Qualquer dúvida, estou à disposição.";
     return "https://wa.me/" + n + "?text=" + encodeURIComponent(txt);
   }
+  function deuAlo(c, msg) { marcarCot(c, { retorno: Date.now(), alos: alosCot(c) + 1 }, msg); }
+  function naoFechou(c) { marcarCot(c, { status: "perdida", fechada: Date.now() }, "Marcada como não fechou."); }
   function renderRetorno() {
     var lista = cotPendentes(), box = $("q-ret"); box.textContent = "";
     $("q-ret-box").hidden = !lista.length;
     lista.forEach(function (c) {
       var r = precoCot(c), valor = (r ? r.total : c.valorTotal || 0) + (c.entradas ? parse(c.entradas.frete) : c.frete || 0);
-      var d = diasDesde(c.retorno || c.criado), wa = linkWhats(c, valor);
-      var quando = (c.retorno ? "último contato " : "cotado ") + (d === 0 ? "hoje" : d === 1 ? "ontem" : "há " + d + " dias");
+      var et = etapaCot(c), wa = linkWhats(c, valor);
       box.appendChild(el("div", { class: "hj", style: "flex-wrap:wrap" }, [
         el("div", { style: "flex:1 1 200px" }, [
           el("b", { text: (c.cliente || c.telefone || c.whatsapp) + " · " + c.nome + " × " + c.qtd }),
           el("div", { class: "meta", text: brl.format(valor) + " · cotado em " + dataBR(c.criado) }),
-          el("div", { class: "meta" + (d >= 3 ? " warn" : ""), text: quando + (d >= 3 ? " · vale chamar o cliente" : "") })
+          el("div", { class: "meta" + (et ? " warn" : ""), text: textoEtapa(c) })
         ]),
         el("div", { class: "acts", style: "flex:1 1 100%" }, [
-          wa ? el("a", { href: wa, target: "_blank", rel: "noopener", text: "Chamar no WhatsApp", onclick: function () { marcarCot(c, { retorno: Date.now() }); } }) : null,
-          el("button", { type: "button", text: "Já falei", onclick: function () { marcarCot(c, { retorno: Date.now() }, "Contato anotado."); } }),
+          wa ? el("a", { href: wa, target: "_blank", rel: "noopener", text: alosCot(c) === 1 ? "2º alô no WhatsApp" : "Chamar no WhatsApp", onclick: function () { deuAlo(c); } }) : null,
+          el("button", { type: "button", text: "Já falei", onclick: function () { deuAlo(c, "Contato anotado."); } }),
           el("button", { type: "button", text: "Virou venda", onclick: function () { carregarCotacao(c); abrirAba("custo"); $("abrir-venda").click(); } }),
           el("button", { type: "button", class: "del", text: "Não fechou", onclick: function () {
             confirmar("O cliente não fechou?", (c.cliente || "Cliente") + " · " + c.nome + ". A cotação sai da lista de espera (fica em Todas, com a opção Reabrir).", [
-              { texto: "Não fechou", classe: "primary", acao: function () { marcarCot(c, { status: "perdida", fechada: Date.now() }, "Marcada como não fechou."); } }
+              { texto: "Não fechou", classe: "primary", acao: function () { naoFechou(c); } }
             ]);
           } })
         ])
@@ -2804,7 +2826,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
   }
   function renderAlertaCot() {
-    var lista = cotPendentes(), velhas = lista.filter(function (c) { return diasDesde(c.retorno || c.criado) >= 3; }).length;
+    var lista = cotPendentes(), velhas = lista.filter(function (c) { return etapaCot(c) > 0; }).length;
     $("alerta-cot").hidden = !lista.length || !$("tab-cotacoes").hidden;
     $("t-cotacoes").textContent = "Cotações";
     if (velhas) $("t-cotacoes").appendChild(el("span", { class: "ponto", "aria-label": "cotações sem resposta" }));
@@ -3074,7 +3096,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var desc = {}; itens.forEach(function (i) { desc[i.c.id] = i.desc; });
     var orc = { marca: d.marca, data: d.data, empresa: d.empresa, contato: d.contato, doc: d.doc, cidade: d.cidade, telefone: d.telefone, envio: d.envio,
       frete: frete, prazo: d.prazo, cond: d.cond, pagamento: d.pagamento === textoPagamento(d.total, d.cond) ? "" : d.pagamento, itens: itens.map(function (i) { return i.c.id; }), desc: desc };
-    gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orcHist: (c.orcHist || []).concat([d.numero]), orc: orc, retorno: Date.now() }, envia ? { enviado: Date.now() } : {}));
+    gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orcHist: (c.orcHist || []).concat([d.numero]), orc: orc, retorno: Date.now() }, envia ? { enviado: Date.now(), alos: 0 } : {}));
     itens.forEach(function (i) { if (i.c.id !== c.id) gravar("cotacoes", i.c.id, Object.assign({}, i.c, { orcNumero: d.numero })); });
     fecharSheet("sh-orc"); toast(envia ? "Orçamento " + d.numero + " pronto para enviar. O texto também foi copiado." : "Orçamento " + d.numero + " gerado.");
   });
@@ -3278,11 +3300,17 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         sub: dt.faltam > 14 ? "Dá tempo de produzir com calma." : "Está chegando, melhor chamar logo.", btn: "Ver clientes", acao: function () { cliTag = dt.nome; cliLinha = ""; abrirAba("clientes"); renderClientes(); } });
       else add({ g: "tempo", leve: true, txt: rotTag(dt.nome) + " " + quando + ".", sub: "Bom momento para preparar uma peça temática. Ao orçar, marque a etiqueta da data na peça.", btn: "Clientes", acao: function () { abrirAba("clientes"); } });
     });
-    var cots = cotPendentes().filter(function (c) { return diasDesde(c.retorno || c.criado) >= 2; });
+    // cotações no ritmo 2 / 5 / 10 dias
+    var cots = cotPendentes().filter(function (c) { return etapaCot(c) > 0; });
+    cots.filter(function (c) { return etapaCot(c) === 3; }).forEach(function (c) {
+      add({ g: "facil", tmp: "30 s", txt: (c.cliente || "O cliente") + " não respondeu o orçamento de " + c.nome + " depois de " + alosCot(c) + (alosCot(c) === 1 ? " alô" : " alôs") + " (" + diasEnvio(c) + " dias). Marcar como não fechou?",
+        sub: "Ele sai da lista, mas continua na ficha do cliente. Dá para reabrir quando quiser.", btn: "Não fechou", acao: function () { naoFechou(c); } });
+    });
+    cots = cots.filter(function (c) { return etapaCot(c) < 3; });
     cots.slice(0, 3).forEach(function (c) {
-      var r = precoCot(c), valor = (r ? r.total : c.valorTotal || 0) + (c.entradas ? parse(c.entradas.frete) : c.frete || 0), link = linkWhats(c, valor), d = diasDesde(c.retorno || c.criado);
-      add({ g: "tempo", leve: true, txt: (c.cliente || "O cliente") + " não respondeu a cotação de " + c.nome + " faz " + d + " dias. Dar um alô?", sub: brl.format(valor),
-        btn: link ? "WhatsApp" : "Ver", href: link, acao: link ? function () { marcarCot(c, { retorno: Date.now() }); } : function () { abrirAba("cotacoes"); } });
+      var r = precoCot(c), valor = (r ? r.total : c.valorTotal || 0) + (c.entradas ? parse(c.entradas.frete) : c.frete || 0), link = linkWhats(c, valor), d = diasEnvio(c), seg = etapaCot(c) === 2;
+      add({ g: "tempo", leve: true, txt: seg ? "Segundo alô para " + (c.cliente || "o cliente") + " sobre " + c.nome + "? Já faz " + d + " dias. Vale oferecer um ajuste." : (c.cliente || "O cliente") + " não respondeu o orçamento de " + c.nome + " faz " + d + " dias. Dar um alô?", sub: brl.format(valor),
+        btn: link ? "WhatsApp" : "Ver", href: link, acao: link ? function () { deuAlo(c); } : function () { abrirAba("cotacoes"); } });
     });
     if (cots.length > 3) add({ g: "tempo", leve: true, txt: "E mais " + (cots.length - 3) + " cotações esperando resposta.", btn: "Ver", acao: function () { abrirAba("cotacoes"); } });
     L.forEach(function (s, k) { s.k = k; });
@@ -3468,10 +3496,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       L.push({ cor: "o", txt: "Faltam " + brl.format(falta(p)) + " do nº " + p.numero + " (" + p.nome + ").", btn: "Receber", acao: function () { abrirPag(p); } });
     });
     c.cotsAbertas.forEach(function (x) {
-      var d = diasDesde(x.retorno || x.criado), r = precoCot(x), valor = (r ? r.total : x.valorTotal || 0) + (x.entradas ? parse(x.entradas.frete) : x.frete || 0);
+      var d = diasEnvio(x), r = precoCot(x), valor = (r ? r.total : x.valorTotal || 0) + (x.entradas ? parse(x.entradas.frete) : x.frete || 0);
       var link = linkWhats(Object.assign({}, x, { whatsapp: x.whatsapp || c.whats }), valor);
       L.push({ cor: "a", txt: "Orçamento de " + x.nome + " esperando resposta" + (d > 0 ? " há " + d + (d === 1 ? " dia" : " dias") : "") + ".", btn: link ? "Dar um alô" : "Ver",
-        href: link, acao: link ? function () { marcarCot(x, { retorno: Date.now() }); } : function () { abrirAba("cotacoes"); } });
+        href: link, acao: link ? function () { deuAlo(x); } : function () { abrirAba("cotacoes"); } });
     });
     c.prontos.forEach(function (p) { L.push({ cor: "v", txt: "Pedido nº " + p.numero + " (" + p.nome + ") pronto. Combinar a entrega?", btn: "Ver pedido", acao: function () { abrirPedido(p); } }); });
     return L;
