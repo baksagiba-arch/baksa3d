@@ -128,6 +128,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 /* os avisos do topo viraram sugestões da bússola e pontinhos nos botões de baixo */
 .wrap .alerta { display: none; }
 /* Fases do pedido: bolinhas numa linha, da cotação ao pagamento */
+.bols { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.bol { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.bol.r { background: #d93a2b; } .bol.o { background: #e8892b; } .bol.a { background: #2f7fd0; } .bol.v { background: #2e9b57; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legenda span { display: inline-flex; align-items: center; gap: 5px; }
+.aviso-cli { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.aviso-cli:last-child { border-bottom: 0; }
+.aviso-cli > div { flex: 1; min-width: 0; font-size: 14px; }
+.aviso-cli button, .aviso-cli a { flex: none; text-decoration: none; }
+.box { border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; margin-top: 10px; }
+.box.cad { padding: 10px 12px; }
+.cad { display: grid; gap: 4px; font-size: 14px; }
+.cad .k { color: var(--muted); font-size: 12px; }
+.linha .st.toque { cursor: pointer; }
+.item.realce { box-shadow: 0 0 0 3px var(--accent); }
 .vfases { display: grid; padding: 4px 0 0; }
 .vf { display: flex; gap: 10px; position: relative; padding-bottom: 12px; }
 .vf::before { content: ""; position: absolute; left: 10px; top: 22px; bottom: 0; width: 2px; background: var(--line); }
@@ -309,6 +324,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <button type="button" role="tab" id="t-feitos" aria-controls="tab-feitos" aria-selected="false">O que já fiz</button>
     <button type="button" role="tab" id="t-custo" aria-controls="tab-custo" aria-selected="true">Custo</button>
     <button type="button" role="tab" id="t-cotacoes" aria-controls="tab-cotacoes" aria-selected="false">Cotações</button>
+    <button type="button" role="tab" id="t-clientes" aria-controls="tab-clientes" aria-selected="false">Clientes</button>
     <button type="button" role="tab" id="t-fila" aria-controls="tab-fila" aria-selected="false">Fila</button>
     <button type="button" role="tab" id="t-pedidos" aria-controls="tab-pedidos" aria-selected="false">Pedidos</button>
     <button type="button" role="tab" id="t-estoque" aria-controls="tab-estoque" aria-selected="false">Estoque</button>
@@ -325,6 +341,26 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="feito-top" id="ft-top"></div>
     <div id="ft-lista" class="linha"></div>
     <p class="hint center" id="ft-hist"></p>
+  </div>
+
+  <div id="tab-clientes" role="tabpanel" aria-labelledby="t-clientes" class="panel" hidden>
+    <div class="seg" role="group" aria-label="Linha" id="cl-linha-seg" style="grid-template-columns:1fr 1fr 1fr">
+      <button type="button" data-l="" aria-pressed="true">Todos</button><button type="button" data-l="b3d" aria-pressed="false">Baksa 3D</button><button type="button" data-l="bds" aria-pressed="false">BDS</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="k2">Clientes</span><b id="cl-n">–</b></div>
+      <div class="kpi"><span class="k2">Compraram mais de uma vez</span><b id="cl-volta">–</b></div>
+    </div>
+    <div class="field">
+      <label for="cl-busca">Buscar</label>
+      <div class="inp"><input id="cl-busca" class="txt" type="search" autocomplete="off" placeholder="Nome, empresa ou telefone"></div>
+    </div>
+    <div class="legenda" aria-label="Legenda das bolinhas">
+      <span><i class="bol r"></i>Aniversário hoje</span><span><i class="bol o"></i>Deve</span><span><i class="bol a"></i>Orçamento esperando</span><span><i class="bol v"></i>Pedido pronto</span>
+    </div>
+    <button type="button" class="mini" id="cl-novo" style="justify-self:start">+ Novo cliente</button>
+    <div id="cl-lista" class="lista"></div>
+    <p class="hint center">O app junta tudo do mesmo cliente pela empresa, pelo telefone/WhatsApp ou, sem eles, pelo nome.</p>
   </div>
 
   <div id="tab-fila" role="tabpanel" aria-labelledby="t-fila" class="panel" hidden>
@@ -348,6 +384,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   <section aria-labelledby="h-cli">
     <h2 id="h-cli">Cliente</h2>
     <div class="field"><label for="cli-nome">Nome</label><div class="inp"><input id="cli-nome" class="txt" autocomplete="off" placeholder="Nome do cliente"></div></div>
+    <div class="field"><label for="cli-emp">Empresa (se for)</label><div class="inp"><input id="cli-emp" class="txt" autocomplete="off" placeholder="Ex.: Oficina Dias" list="lista-emp"></div><datalist id="lista-emp"></datalist></div>
+    <div class="field"><label for="cli-linha">Linha</label><div class="selwrap"><select id="cli-linha"><option value="b3d">Baksa 3D</option><option value="bds">BDS (miniaturas e displays 1:64)</option></select></div></div>
     <div class="row2">
       <div class="field"><label for="cli-tel">Telefone</label><div class="inp"><input id="cli-tel" class="txt" type="tel" inputmode="tel" autocomplete="off" placeholder="(11) 3333-3333"></div></div>
       <div class="field"><label for="cli-whats">WhatsApp</label><div class="inp"><input id="cli-whats" class="txt" type="tel" inputmode="tel" autocomplete="off" placeholder="(11) 99999-9999"></div></div>
@@ -807,6 +845,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <h3 id="ec-titulo">Dados do cliente</h3>
     <p class="hint" id="ec-sub"></p>
     <div class="field"><label for="ec-nome">Nome</label><div class="inp"><input id="ec-nome" class="txt" autocomplete="off" placeholder="Nome do cliente"></div></div>
+    <div class="field"><label for="ec-emp">Empresa (se for)</label><div class="inp"><input id="ec-emp" class="txt" autocomplete="off" list="lista-emp"></div></div>
     <div class="row2">
       <div class="field"><label for="ec-tel">Telefone</label><div class="inp"><input id="ec-tel" class="txt" type="tel" inputmode="tel" autocomplete="off"></div></div>
       <div class="field"><label for="ec-whats">WhatsApp</label><div class="inp"><input id="ec-whats" class="txt" type="tel" inputmode="tel" autocomplete="off"></div></div>
@@ -817,6 +856,50 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="d-acoes">
       <button type="submit" class="primary">Salvar</button>
       <button type="button" id="ec-cancelar">Cancelar</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="sh-cad" hidden role="dialog" aria-modal="true" aria-labelledby="cd-titulo">
+  <form class="card" id="cd-form" novalidate>
+    <h3 id="cd-titulo">Cadastro do cliente</h3>
+    <div class="field"><label for="cd-nome">Nome</label><div class="inp"><input id="cd-nome" class="txt" autocomplete="off" placeholder="Nome da pessoa"></div></div>
+    <div class="field"><label for="cd-emp">Empresa (se for)</label><div class="inp"><input id="cd-emp" class="txt" autocomplete="off" list="lista-emp"></div></div>
+    <div class="field"><label for="cd-linha">Linha</label><div class="selwrap"><select id="cd-linha"><option value="b3d">Baksa 3D</option><option value="bds">BDS (miniaturas e displays 1:64)</option></select></div></div>
+    <h2>Contato</h2>
+    <div class="row2">
+      <div class="field"><label for="cd-whats">WhatsApp</label><div class="inp"><input id="cd-whats" class="txt" type="tel" inputmode="tel" autocomplete="off"></div></div>
+      <div class="field"><label for="cd-tel">Telefone</label><div class="inp"><input id="cd-tel" class="txt" type="tel" inputmode="tel" autocomplete="off"></div></div>
+    </div>
+    <div class="field"><label for="cd-email">E-mail</label><div class="inp"><input id="cd-email" class="txt" type="email" inputmode="email" autocomplete="off"></div></div>
+    <div class="field"><label for="cd-doc">CPF ou CNPJ</label><div class="inp"><input id="cd-doc" class="txt" inputmode="numeric" autocomplete="off"></div></div>
+    <h2>Endereço</h2>
+    <div class="row2">
+      <div class="field"><label for="cd-cep">CEP</label><div class="inp"><input id="cd-cep" class="txt" inputmode="numeric" autocomplete="off" placeholder="00000-000"></div></div>
+      <div class="field"><label for="cd-num">Número</label><div class="inp"><input id="cd-num" class="txt" autocomplete="off"></div></div>
+    </div>
+    <p class="hint" id="cd-cep-info">Digite o CEP que o app tenta preencher a rua, o bairro e a cidade.</p>
+    <div class="field"><label for="cd-rua">Rua</label><div class="inp"><input id="cd-rua" class="txt" autocomplete="off"></div></div>
+    <div class="field"><label for="cd-compl">Complemento</label><div class="inp"><input id="cd-compl" class="txt" autocomplete="off" placeholder="Apto, bloco, sala…"></div></div>
+    <div class="field"><label for="cd-bairro">Bairro</label><div class="inp"><input id="cd-bairro" class="txt" autocomplete="off"></div></div>
+    <div class="row2">
+      <div class="field"><label for="cd-cidade">Cidade</label><div class="inp"><input id="cd-cidade" class="txt" autocomplete="off"></div></div>
+      <div class="field"><label for="cd-uf">Estado</label><div class="inp"><input id="cd-uf" class="txt" autocomplete="off" maxlength="2" placeholder="SC"></div></div>
+    </div>
+    <h2>Pessoal (tudo opcional)</h2>
+    <div class="row2">
+      <div class="field"><label for="cd-aniv">Aniversário</label><div class="inp"><input id="cd-aniv" class="txt" inputmode="numeric" autocomplete="off" placeholder="dd/mm"></div></div>
+      <div class="field"><label for="cd-apelido">Gosta de ser chamado</label><div class="inp"><input id="cd-apelido" class="txt" autocomplete="off"></div></div>
+    </div>
+    <div class="field"><label for="cd-familia">Família</label><div class="inp"><input id="cd-familia" class="txt" autocomplete="off" placeholder="Ex.: filha Laura, 8 anos"></div></div>
+    <div class="field"><label for="cd-pets">Pets</label><div class="inp"><input id="cd-pets" class="txt" autocomplete="off" placeholder="Ex.: Thor, golden"></div></div>
+    <div class="field"><label for="cd-time">Time</label><div class="inp"><input id="cd-time" class="txt" autocomplete="off"></div></div>
+    <div class="field"><label for="cd-gostos">Gostos e hobbies</label><div class="inp"><input id="cd-gostos" class="txt" autocomplete="off"></div></div>
+    <div class="field"><label for="cd-obs">Observações</label><textarea id="cd-obs" rows="3" placeholder="Ex.: prefere retirar, só responde à tarde"></textarea></div>
+    <p class="hint err" id="cd-erro" aria-live="polite"></p>
+    <div class="d-acoes">
+      <button type="submit" class="primary">Salvar</button>
+      <button type="button" id="cd-cancelar">Cancelar</button>
     </div>
   </form>
 </div>
@@ -951,8 +1034,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var NOMES_NEG = { venda: "Preço cheio", favoravel: "Favorável", minimo: "Mínimo", desconto: "Desconto" };
   var ultimo = {};
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
-  var PECA = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
-  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "potencia2", "deprec2", "horasDia", "margem", "impostos", "margemMin"];
+  var PECA = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
+  var campos = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "potencia2", "deprec2", "horasDia", "margem", "impostos", "margemMin"];
 
   function carregar() {
     var s = null;
@@ -1206,8 +1289,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   calcular();
 
   /* ---------- Armazenamento: banco do app (compartilhado) ou, fora dele, este aparelho ---------- */
-  var COLS = ["filamentos", "pedidos", "cotacoes", "catalogo", "fila", "falhas"];
-  var cache = { filamentos: {}, pedidos: {}, cotacoes: {}, catalogo: {}, fila: {}, falhas: {} };
+  var COLS = ["filamentos", "pedidos", "cotacoes", "catalogo", "fila", "falhas", "clientes"];
+  var cache = { filamentos: {}, pedidos: {}, cotacoes: {}, catalogo: {}, fila: {}, falhas: {}, clientes: {} };
   var pronto = false, modoDados = "carregando", db = null;
   function lsGet(c) { try { return JSON.parse(localStorage.getItem("baksa3d." + c) || "{}"); } catch (e) { return {}; } }
   function lsSet(c) { try { localStorage.setItem("baksa3d." + c, JSON.stringify(cache[c])); } catch (e) {} }
@@ -1304,7 +1387,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
   /* ---------- Abas ---------- */
   // Botões de baixo = etapas do trabalho; abas de cima = o que tem dentro de cada etapa, na ordem do processo
-  var CATS = { bussola: ["sugestoes", "feitos"], vender: ["custo", "cotacoes"], produzir: ["fila", "pedidos", "estoque"], receber: ["receber", "vendas"] };
+  var CATS = { bussola: ["sugestoes", "feitos"], vender: ["custo", "cotacoes", "clientes"], produzir: ["fila", "pedidos", "estoque"], receber: ["receber", "vendas"] };
   var ABAS = [].concat(CATS.bussola, CATS.vender, CATS.produzir, CATS.receber);
   var ultimaDaCat = {};
   try { ultimaDaCat = JSON.parse(localStorage.getItem("baksa3d.abasCat") || "{}") || {}; } catch (e) {}
@@ -1360,11 +1443,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function porKg(f) { return f.pesoCarretel > 0 ? f.valorCarretel / f.pesoCarretel * 1000 : 0; }
   function abrirSheet(id) { $(id).hidden = false; }
   function fecharSheet(id) { $(id).hidden = true; }
-  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha"].forEach(function (id) {
+  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha", "sh-cad"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) fecharSheet(id); });
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha"].forEach(fecharSheet);
+    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha", "sh-cad"].forEach(fecharSheet);
   });
 
   // confirmação dentro da página (o app não usa janelas do navegador)
@@ -1666,7 +1749,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       numero: proximoNumero(), criado: Date.now(),
       nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
       cliente: $("sv-cliente").value.trim(), telefone: $("sv-tel").value.trim(), prazo: $("sv-prazo").value,
-      whatsapp: $("cli-whats").value.trim(), email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
+      whatsapp: $("cli-whats").value.trim(), email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(), empresa: $("cli-emp").value.trim(), linha: $("cli-linha").value,
       frete: frete, valorPecas: u.total, valorUnit: u.unit, valorTotal: u.total + frete,
       valorCheio: u.cheio, lucroCheio: u.lucroCheio, margemCheia: u.margemCheia, negTipo: u.negTipo, negDesc: u.negDesc,
       custo: u.custo, impostos: u.impostos, margem: u.margem, desperdicio: u.desp,
@@ -1705,7 +1788,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("limpar").addEventListener("click", function () {
     confirmar("Limpar para nova peça?", "Apaga cliente, resumo, nome da peça, quantidade, tempo, peso, embalagem e frete. Filamento, margem, desperdício e custos fixos continuam como estão.", [
       { texto: "Limpar", classe: "primary", acao: function () {
-        ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo"].forEach(function (k) { $(k).value = ""; });
+        ["cli-nome", "cli-emp", "cli-tel", "cli-email", "cli-whats", "cli-resumo"].forEach(function (k) { $(k).value = ""; }); $("cli-linha").value = "b3d";
         $("nome").value = ""; $("qtd").value = "1";
         $("horas").value = ""; $("minutos").value = ""; $("decimal").value = "";
         $("peso").value = ""; $("embalagem").value = ""; $("frete").value = "";
@@ -2041,7 +2124,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function editarCliente(col, x) {
     cliEditando = { col: col, id: x.id };
     $("ec-sub").textContent = col === "pedidos" ? "Pedido nº " + x.numero + " · " + x.nome + " × " + x.qtd : "Cotação de " + dataBR(x.criado) + " · " + x.nome + " × " + x.qtd;
-    $("ec-nome").value = x.cliente || ""; $("ec-tel").value = x.telefone || ""; $("ec-whats").value = x.whatsapp || "";
+    $("ec-nome").value = x.cliente || ""; $("ec-emp").value = x.empresa || ""; $("ec-tel").value = x.telefone || ""; $("ec-whats").value = x.whatsapp || "";
     $("ec-email").value = x.email || ""; $("ec-resumo").value = x.resumo || "";
     abrirSheet("sh-cli");
   }
@@ -2049,11 +2132,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("ec-form").addEventListener("submit", function (e) {
     e.preventDefault();
     var ed = cliEditando, x = ed && cache[ed.col][ed.id]; if (!x) { fecharSheet("sh-cli"); return; }
-    var d = { cliente: $("ec-nome").value.trim(), telefone: $("ec-tel").value.trim(), whatsapp: $("ec-whats").value.trim(),
+    var d = { cliente: $("ec-nome").value.trim(), empresa: $("ec-emp").value.trim(), telefone: $("ec-tel").value.trim(), whatsapp: $("ec-whats").value.trim(),
       email: $("ec-email").value.trim(), resumo: $("ec-resumo").value.trim() };
     var novo = Object.assign({}, x, d);
     // na cotação, os campos guardados também mudam, para aparecerem certos ao abrir no Custo
-    if (ed.col === "cotacoes" && x.entradas) novo.entradas = Object.assign({}, x.entradas, { "cli-nome": d.cliente, "cli-tel": d.telefone, "cli-whats": d.whatsapp, "cli-email": d.email, "cli-resumo": d.resumo });
+    if (ed.col === "cotacoes" && x.entradas) novo.entradas = Object.assign({}, x.entradas, { "cli-nome": d.cliente, "cli-emp": d.empresa, "cli-tel": d.telefone, "cli-whats": d.whatsapp, "cli-email": d.email, "cli-resumo": d.resumo });
     gravar(ed.col, ed.id, novo).then(function () { fecharSheet("sh-cli"); toast("Dados do cliente salvos."); });
   });
 
@@ -2257,7 +2340,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       var atrasado = p.status !== "entregue" && p.prazo && p.prazo < hoje;
       var idx = STATUS.findIndex(function (s) { return s.id === p.status; });
       var prox = STATUS[idx + 1];
-      box.appendChild(el("div", { class: "item" }, [
+      box.appendChild(el("div", { class: "item", "data-ped": p.id }, [
         el("div", { class: "top" }, [
           el("span", { class: "pos", text: verEntregues ? "✓" : String(posChegada[p.id]) + "º" }),
           el("div", null, [
@@ -2471,7 +2554,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   /* ---------- Cotações ---------- */
-  var CAMPOS_COT = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "margem", "potencia", "kwh", "deprec", "impostos"];
+  var CAMPOS_COT = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "margem", "potencia", "kwh", "deprec", "impostos"];
   var cotAtual = null; // id da cotação aberta/salva por último
   function fotoEntradas() {
     var o = { modo: modo, imp: imp, desp: Number($("desp").value), filSel: $("fil-sel").value, negTipo: neg.tipo, negDesc: neg.desc };
@@ -2484,7 +2567,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var u = ultimo, f = filAtual(), e = fotoEntradas();
     return {
       criado: Date.now(), nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
-      cliente: $("cli-nome").value.trim(), telefone: $("cli-tel").value.trim(), whatsapp: $("cli-whats").value.trim(),
+      cliente: $("cli-nome").value.trim(), empresa: $("cli-emp").value.trim(), linha: $("cli-linha").value, telefone: $("cli-tel").value.trim(), whatsapp: $("cli-whats").value.trim(),
       email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
       valorUnit: u.unit, valorTotal: u.total, frete: u.frete, custo: u.custo, pesoTotal: u.peso, tempoTotal: u.tempo,
       margem: u.margem, filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "", impressora: imp,
@@ -2538,6 +2621,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function carregarCotacao(c) {
     var e = c.entradas || {};
     CAMPOS_COT.forEach(function (k) { if (e[k] != null && FIXOS.indexOf(k) < 0) $(k).value = e[k]; });
+    $("cli-linha").value = e["cli-linha"] || c.linha || "b3d";
     setModo(e.modo || "hm", true);
     setImp(IMPS[e.imp] ? e.imp : "p1s", true);
     $("fil-sel").value = e.filSel && cache.filamentos[e.filSel] ? e.filSel : "";
@@ -2733,8 +2817,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var o = c.orc || {}, hoje = hojeISO();
     $("or-num").value = proximaVersao(ultimoOrcIgual(c)) || proximoOrc(+hoje.slice(0, 4));
     $("or-data").value = o.data || hoje;
-    $("or-emp").value = o.empresa || c.cliente || ""; $("or-contato").value = o.contato || "";
-    $("or-doc").value = o.doc || ""; $("or-cidade").value = o.cidade || "";
+    $("or-emp").value = o.empresa || c.empresa || c.cliente || ""; $("or-contato").value = o.contato || (c.empresa ? c.cliente || "" : "");
+    var cd = cadDe(c) || {};
+    $("or-doc").value = o.doc || cd.doc || ""; $("or-cidade").value = o.cidade || [cd.cidade, cd.uf].filter(Boolean).join("-");
     $("or-tel").value = o.telefone || c.whatsapp || c.telefone || "";
     $("or-envio").value = o.envio || "A definir";
     var mPadrao = "ambas"; try { mPadrao = localStorage.getItem("baksa3d.marca2") || "ambas"; } catch (x) {}
@@ -3093,6 +3178,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         sub: "Dá para comprar, usar outra marca da mesma cor ou combinar outra cor com o cliente.", btn: "Estoque", acao: function () { abrirAba("estoque"); } });
       else if (f.gramas < minimo(f)) add({ g: "tempo", leve: true, txt: [f.tipo, f.cor].filter(Boolean).join(" ") + " acabando (" + kg(Math.max(0, f.gramas)) + ")." + (precisam.length ? "" : " Nenhum pedido precisa dele agora."), btn: "Estoque", acao: function () { abrirAba("estoque"); } });
     });
+    clientes().filter(function (c) { return c.aniv; }).forEach(function (c) {
+      var nome = primeiroNome(c) || c.nome, link = waLink(c.whats, "Oi " + nome + "! Feliz aniversário! Que seu dia seja incrível. Um abraço da Baksa 3D 🎉");
+      add({ g: "facil", tmp: "1 min", txt: "Hoje é aniversário de " + nome + (c.emp && c.emp !== nome ? " (" + c.emp + ")" : "") + ". Mandar parabéns? 🎂",
+        btn: link ? "WhatsApp" : "Ver", href: link, acao: link ? function () {} : function () { cliAberto = c.id; abrirAba("clientes"); } });
+    });
     var cots = cotPendentes().filter(function (c) { return diasDesde(c.retorno || c.criado) >= 2; });
     cots.slice(0, 3).forEach(function (c) {
       var r = precoCot(c), valor = (r ? r.total : c.valorTotal || 0) + (c.entradas ? parse(c.entradas.frete) : c.frete || 0), link = linkWhats(c, valor), d = diasDesde(c.retorno || c.criado);
@@ -3178,7 +3268,225 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   setInterval(function () { if (!document.hidden) { renderSugestoes(); renderFeitos(); } }, 60000);
 
-  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); renderSugestoes(); renderFeitos(); pontosNav(); }
+  /* ---------- Clientes: cadastro + tudo do mesmo cliente junto (empresa, telefone ou, sem eles, nome) ---------- */
+  function normTxt(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim(); }
+  function numCli(x) { var n = String(x.whatsapp || x.telefone || "").replace(/\D/g, ""); if (n.length > 11) n = n.slice(-11); return n.length >= 8 ? n.slice(-8) : ""; }
+  function chavesCli(x, nome) {
+    var ch = [];
+    if (x.empresa) ch.push("e:" + normTxt(x.empresa));
+    if (numCli(x)) ch.push("n:" + numCli(x));
+    if (!ch.length && nome) ch.push("c:" + normTxt(nome));
+    return ch.concat(Array.isArray(x.liga) ? x.liga : []);
+  }
+  function waLink(num, txt) {
+    var n = String(num || "").replace(/\D/g, ""); if (n.length < 10) return "";
+    if (n.length <= 11) n = "55" + n;
+    return "https://wa.me/" + n + (txt ? "?text=" + encodeURIComponent(txt) : "");
+  }
+  // aniversário guardado como "dd/mm"
+  function anivHoje(cd) { var m = /^(\d{1,2})\/(\d{1,2})/.exec(cd && cd.aniv || ""), h = new Date(); return !!m && +m[1] === h.getDate() && +m[2] === h.getMonth() + 1; }
+  var cliAberto = null, cliLinha = "";
+  function clientes() {
+    var regs = [];
+    listaPed().forEach(function (p) { regs.push({ tipo: "ped", x: p, t: p.criado || 0 }); });
+    Object.keys(cache.cotacoes).forEach(function (k) { var c = cache.cotacoes[k]; if (c.cliente || c.empresa || c.telefone || c.whatsapp) regs.push({ tipo: "cot", x: c, t: c.criado || 0 }); });
+    Object.keys(cache.clientes).forEach(function (k) { var c = Object.assign({ id: k }, cache.clientes[k]); regs.push({ tipo: "cad", x: c, t: c.criado || 0 }); });
+    // registros que dividem empresa, número ou (sem os dois) nome viram o mesmo cliente
+    var pai = {};
+    function acha(k) { while (pai[k] !== k) { pai[k] = pai[pai[k]]; k = pai[k]; } return k; }
+    function une(a, b) { a = acha(a); b = acha(b); if (a !== b) pai[a] = b; }
+    regs.forEach(function (r, i) {
+      r.ch = chavesCli(r.x, r.tipo === "cad" ? r.x.nome : r.x.cliente); pai["r" + i] = "r" + i;
+      if (r.tipo === "cad") { r.ch.push("id:" + r.x.id); }
+      r.ch.forEach(function (k) { if (pai[k] == null) pai[k] = k; une("r" + i, k); });
+    });
+    var grupos = {};
+    regs.forEach(function (r, i) { if (!r.ch.length) return; var g = acha("r" + i); (grupos[g] = grupos[g] || []).push(r); });
+    return Object.keys(grupos).map(function (g) {
+      var todos = grupos[g], cadR = todos.filter(function (r) { return r.tipo === "cad"; })[0], cd = cadR ? cadR.x : null;
+      var rs = todos.filter(function (r) { return r.tipo !== "cad"; }).sort(function (a, b) { return b.t - a.t; });
+      var peds = rs.filter(function (r) { return r.tipo === "ped"; }).map(function (r) { return r.x; });
+      var emp = cd && cd.empresa || "", nomes = cd && cd.nome ? [cd.nome] : [], tels = [];
+      if (cd) [cd.whatsapp, cd.telefone].forEach(function (t) { if (t && tels.indexOf(t) < 0) tels.push(t); });
+      var chaves = [];
+      todos.forEach(function (r) { r.ch.forEach(function (k) { if (chaves.indexOf(k) < 0 && k.indexOf("id:") !== 0) chaves.push(k); }); });
+      rs.forEach(function (r) {
+        if (!emp && r.x.empresa) emp = r.x.empresa;
+        // "Marcos" não repete se já tem "Marcos Pereira"
+        var nn = normTxt(r.x.cliente);
+        if (nn && !nomes.some(function (m) { m = normTxt(m); return m === nn || m.split(" ")[0] === nn; })) nomes.push(r.x.cliente);
+        var t = r.x.whatsapp || r.x.telefone; if (t && tels.indexOf(t) < 0) tels.push(t);
+      });
+      var cotsAbertas = rs.filter(function (r) { return r.tipo === "cot" && (r.x.status || "aberta") === "aberta"; }), vistas = {};
+      cotsAbertas = cotsAbertas.filter(function (r) { var k = normTxt(r.x.nome); if (vistas[k]) return false; vistas[k] = 1; return true; }).map(function (r) { return r.x; });
+      var linha = cd && cd.linha || (rs.filter(function (r) { return r.x.linha; })[0] || { x: {} }).x.linha || "b3d";
+      var ex = rs[0] ? rs[0].x : {};
+      return { id: cd ? "id:" + cd.id : g, cad: cd, emp: emp, nome: emp || nomes[0] || "Sem nome", nomes: nomes, tels: tels, regs: rs, peds: peds, cotsAbertas: cotsAbertas, chaves: chaves, linha: linha,
+        whats: cd && cd.whatsapp || ex.whatsapp || (tels[0] || ""), email: cd && cd.email || ex.email || "",
+        prontos: peds.filter(function (p) { return p.status === "pronto"; }), aniv: anivHoje(cd),
+        gasto: peds.reduce(function (s, p) { return s + (p.valorTotal || 0); }, 0), deve: peds.reduce(function (s, p) { return s + falta(p); }, 0),
+        ultima: peds.length ? peds[0].criado : 0, ultimo: rs.length ? rs[0].t : cd.criado || 0, x: ex };
+    }).sort(function (a, b) { return (b.aniv ? 1 : 0) - (a.aniv ? 1 : 0) || b.ultimo - a.ultimo; });
+  }
+  // cadastro do cliente de um pedido ou cotação (se existir)
+  function cadDe(x) {
+    var ch = chavesCli(x, x.cliente); if (!ch.length) return null;
+    var cs = clientes(); for (var i = 0; i < cs.length; i++) if (cs[i].cad && cs[i].chaves.some(function (k) { return ch.indexOf(k) > -1; })) return cs[i].cad;
+    return null;
+  }
+  function primeiroNome(c) { var cd = c.cad || {}; return cd.apelido || String(cd.nome || (c.emp ? c.nomes[0] : c.nome) || "").split(" ")[0]; }
+  function novoOrcCliente(c) {
+    var x = c.x, cd = c.cad || {};
+    $("cli-nome").value = cd.nome || (c.emp ? (x.cliente || "") : c.nome); $("cli-emp").value = c.emp || "";
+    $("cli-tel").value = cd.telefone || x.telefone || ""; $("cli-whats").value = cd.whatsapp || x.whatsapp || ""; $("cli-email").value = c.email; $("cli-resumo").value = "";
+    $("cli-linha").value = c.linha;
+    cotAtual = null; neg = { tipo: "venda", desc: 0 };
+    calcular(); salvar(); abrirAba("custo"); toast("Cliente pronto na aba Custo. Agora é só lançar a peça.");
+  }
+  function abrirPedido(p) {
+    verEntregues = p.status === "entregue";
+    abrirAba("pedidos"); renderPedidos();
+    var it = document.querySelector('#p-lista [data-ped="' + p.id + '"]');
+    if (it) { it.scrollIntoView({ block: "center" }); it.classList.add("realce"); setTimeout(function () { it.classList.remove("realce"); }, 2500); }
+  }
+  function enderecoTxt(cd) {
+    var l1 = [cd.rua, cd.num].filter(Boolean).join(", ") + (cd.compl ? " · " + cd.compl : "");
+    var l2 = [cd.bairro, [cd.cidade, cd.uf].filter(Boolean).join("-")].filter(Boolean).join(" · ");
+    return [l1, l2, cd.cep ? "CEP " + cd.cep : ""].filter(Boolean).join("\n");
+  }
+  function bolinhas(c) {
+    var b = [];
+    if (c.aniv) b.push(["r", "aniversário hoje"]);
+    if (c.deve > 0.005) b.push(["o", "deve"]);
+    if (c.cotsAbertas.length) b.push(["a", "orçamento esperando"]);
+    if (c.prontos.length) b.push(["v", "pedido pronto"]);
+    return b.length ? el("span", { class: "bols" }, b.map(function (x) { return el("i", { class: "bol " + x[0], title: x[1], "aria-label": x[1] }); })) : null;
+  }
+  function avisosCli(c) {
+    var L = [], nome = primeiroNome(c);
+    if (c.aniv) L.push({ cor: "r", txt: "Hoje é aniversário " + (nome ? "de " + nome : "do cliente") + "! 🎂", btn: "Mandar parabéns",
+      href: waLink(c.whats, "Oi" + (nome ? " " + nome : "") + "! Feliz aniversário! Que seu dia seja incrível. Um abraço da Baksa 3D 🎉") });
+    c.peds.filter(function (p) { return falta(p) > 0.005; }).forEach(function (p) {
+      L.push({ cor: "o", txt: "Faltam " + brl.format(falta(p)) + " do nº " + p.numero + " (" + p.nome + ").", btn: "Receber", acao: function () { abrirPag(p); } });
+    });
+    c.cotsAbertas.forEach(function (x) {
+      var d = diasDesde(x.retorno || x.criado), r = precoCot(x), valor = (r ? r.total : x.valorTotal || 0) + (x.entradas ? parse(x.entradas.frete) : x.frete || 0);
+      var link = linkWhats(Object.assign({}, x, { whatsapp: x.whatsapp || c.whats }), valor);
+      L.push({ cor: "a", txt: "Orçamento de " + x.nome + " esperando resposta" + (d > 0 ? " há " + d + (d === 1 ? " dia" : " dias") : "") + ".", btn: link ? "Dar um alô" : "Ver",
+        href: link, acao: link ? function () { marcarCot(x, { retorno: Date.now() }); } : function () { abrirAba("cotacoes"); } });
+    });
+    c.prontos.forEach(function (p) { L.push({ cor: "v", txt: "Pedido nº " + p.numero + " (" + p.nome + ") pronto. Combinar a entrega?", btn: "Ver pedido", acao: function () { abrirPedido(p); } }); });
+    return L;
+  }
+  function renderClientes() {
+    var todos = clientes(), busca = normTxt($("cl-busca").value), box = $("cl-lista"); box.textContent = "";
+    [].forEach.call($("cl-linha-seg").children, function (b) { b.setAttribute("aria-pressed", b.dataset.l === cliLinha); });
+    var daLinha = todos.filter(function (c) { return !cliLinha || c.linha === cliLinha; });
+    $("cl-n").textContent = daLinha.length;
+    $("cl-volta").textContent = daLinha.filter(function (c) { return c.peds.length > 1; }).length;
+    var dl = $("lista-emp"); dl.textContent = "";
+    todos.forEach(function (c) { if (c.emp) dl.appendChild(el("option", { value: c.emp })); });
+    var tp = $("t-clientes").querySelector(".ponto"); if (tp) tp.remove();
+    if (todos.some(function (c) { return c.aniv; })) $("t-clientes").appendChild(el("span", { class: "ponto", "aria-label": "aniversário hoje" }));
+    var lista = daLinha.filter(function (c) {
+      var cd = c.cad || {};
+      return !busca || normTxt([c.nome, c.nomes.join(" "), c.tels.join(" "), c.tels.join(" ").replace(/\D/g, ""), cd.cidade, cd.apelido].join(" ")).indexOf(busca) > -1;
+    });
+    lista.forEach(function (c) {
+      var aberto = cliAberto === c.id, cd = c.cad;
+      var kids = [
+        el("div", { class: "top", style: "cursor:pointer", onclick: function () { cliAberto = aberto ? null : c.id; renderClientes(); } }, [
+          el("div", null, [
+            el("h4", null, [(c.aniv ? "🎂 " : "") + c.nome, bolinhas(c)]),
+            el("div", { class: "meta", text: [c.emp ? c.nomes.join(", ") : c.nomes.slice(1).join(", "), c.tels[0], cliLinha ? "" : c.linha === "bds" ? "BDS" : ""].filter(Boolean).join(" · ") || "Sem contato" }),
+            el("div", { class: "meta", text: c.peds.length ? c.peds.length + (c.peds.length === 1 ? " pedido" : " pedidos") + " · última compra " + dataBR(c.ultima) : "Ainda não comprou" }),
+            c.deve > 0.005 ? el("div", { class: "meta warn", text: "Deve " + brl.format(c.deve) }) : null
+          ]),
+          el("div", { class: "val" }, [brl.format(c.gasto), el("div", { class: "meta", text: aberto ? "fechar ▲" : "ver ▼" })])
+        ])
+      ];
+      if (aberto) {
+        // 1) o que tem para fazer com este cliente
+        var av = avisosCli(c);
+        if (av.length) kids.push(el("div", { class: "box" }, av.map(function (a) {
+          return el("div", { class: "aviso-cli" }, [el("i", { class: "bol " + a.cor, "aria-hidden": "true" }), el("div", { text: a.txt }),
+            a.href ? el("a", { class: "mini", href: a.href, target: "_blank", rel: "noopener", text: a.btn, onclick: a.acao || null }) : el("button", { type: "button", class: "mini", text: a.btn, onclick: a.acao })]);
+        })));
+        // 2) cadastro
+        if (cd) {
+          var L = [];
+          function lin(k, v) { if (v) L.push(el("div", null, [el("div", { class: "k", text: k }), el("div", { text: v, style: "white-space:pre-line" })])); }
+          lin("Contato", [cd.whatsapp && "WhatsApp " + cd.whatsapp, cd.telefone && "Tel. " + cd.telefone, cd.email].filter(Boolean).join(" · "));
+          lin("CPF/CNPJ", cd.doc); lin("Endereço", enderecoTxt(cd));
+          lin("Aniversário", cd.aniv); lin("Gosta de ser chamado", cd.apelido); lin("Família", cd.familia); lin("Pets", cd.pets); lin("Time", cd.time); lin("Gostos e hobbies", cd.gostos); lin("Observações", cd.obs);
+          kids.push(el("div", { class: "box cad" }, L.length ? L : [el("div", { class: "meta", text: "Cadastro ainda vazio." })]));
+        } else kids.push(el("p", { class: "hint", text: "Este cliente ainda não tem cadastro. Toque em Cadastro para guardar endereço, documento e as informações pessoais." }));
+        // 3) histórico em bolinhas na vertical, do mais recente para o mais antigo (pedido abre no toque)
+        if (c.regs.length) {
+          var linha = el("div", { class: "linha" });
+          c.regs.slice(0, 20).forEach(function (r) {
+            var x = r.x, txt, sub, ped = r.tipo === "ped";
+            if (ped) { txt = "Pedido nº " + x.numero + " · " + brl.format(x.valorTotal || 0) + " ›"; sub = x.nome + " × " + x.qtd + " · " + nomeStatus(x.status || "fila").toLowerCase() + (falta(x) > 0.005 ? " · falta " + brl.format(falta(x)) : " · pago"); }
+            else { txt = (x.orcNumero ? "Orçamento " + x.orcNumero : "Cotação") + " · " + brl.format((x.valorTotal || 0) + (x.frete || 0)); sub = x.nome + " × " + x.qtd + " · " + ({ pedido: "virou pedido", perdida: "não fechou" }[x.status] || "em aberto"); }
+            linha.appendChild(el("div", { class: "st" + (ped ? " toque" : ""), onclick: ped ? function () { abrirPedido(x); } : null }, [
+              el("span", { class: "c", "aria-hidden": "true", text: ped ? "✓" : "", style: ped ? "" : "background:var(--surface);border:2px solid var(--accent)" }),
+              el("div", null, [txt, el("small", { text: sub })]),
+              el("span", { class: "hr", text: dataBR(r.t).slice(0, 5) })
+            ]));
+          });
+          kids.push(linha);
+        }
+        var wl = waLink(c.whats);
+        kids.push(el("div", { class: "acts sec" }, [
+          wl ? el("a", { href: wl, target: "_blank", rel: "noopener", text: "WhatsApp" }) : null,
+          el("button", { type: "button", text: "Cadastro", onclick: function () { abrirCad(c); } }),
+          el("button", { type: "button", class: "go", text: "Novo orçamento", onclick: function () { novoOrcCliente(c); } })
+        ]));
+      }
+      box.appendChild(el("div", { class: "item" }, kids));
+    });
+    if (!lista.length) box.appendChild(el("div", { class: "empty", text: !pronto ? "Carregando clientes…" : busca ? "Nenhum cliente encontrado." : "Os clientes aparecem aqui quando você cadastrar, salvar uma cotação ou registrar uma venda." }));
+  }
+  [].forEach.call($("cl-linha-seg").children, function (b) { b.addEventListener("click", function () { cliLinha = b.dataset.l; renderClientes(); }); });
+  $("cl-busca").addEventListener("input", renderClientes);
+
+  /* ---------- Cadastro do cliente ---------- */
+  var CAD = ["nome", "emp", "linha", "whats", "tel", "email", "doc", "cep", "num", "rua", "compl", "bairro", "cidade", "uf", "aniv", "apelido", "familia", "pets", "time", "gostos", "obs"];
+  var CAD_K = { emp: "empresa", whats: "whatsapp", tel: "telefone" };
+  var cadEditando = null; // { id, liga }
+  function abrirCad(c) {
+    var cd = c && c.cad || {}, x = c && c.x || {};
+    cadEditando = { id: cd.id || null, liga: c ? c.chaves : [] };
+    var base = cd.id ? cd : { nome: c ? (c.emp ? c.nomes[0] || "" : c.nome) : "", empresa: c ? c.emp : "", linha: c ? c.linha : cliLinha || "b3d",
+      whatsapp: x.whatsapp || "", telefone: x.telefone || "", email: c ? c.email : "", doc: x.orc && x.orc.doc || "" };
+    CAD.forEach(function (k) { $("cd-" + k).value = base[CAD_K[k] || k] || (k === "linha" ? "b3d" : ""); });
+    $("cd-titulo").textContent = cd.id ? "Cadastro do cliente" : c ? "Cadastrar cliente" : "Novo cliente";
+    $("cd-erro").textContent = ""; $("cd-cep-info").textContent = "Digite o CEP que o app tenta preencher a rua, o bairro e a cidade.";
+    abrirSheet("sh-cad");
+  }
+  $("cl-novo").addEventListener("click", function () { abrirCad(null); });
+  $("cd-cancelar").addEventListener("click", function () { fecharSheet("sh-cad"); });
+  $("cd-cep").addEventListener("input", function () {
+    var n = this.value.replace(/\D/g, ""); if (n.length !== 8) return;
+    $("cd-cep-info").textContent = "Buscando o CEP…";
+    fetch("https://viacep.com.br/ws/" + n + "/json/").then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || d.erro) { $("cd-cep-info").textContent = "CEP não encontrado. Preencha à mão."; return; }
+      if (d.logradouro) $("cd-rua").value = d.logradouro; if (d.bairro) $("cd-bairro").value = d.bairro;
+      if (d.localidade) $("cd-cidade").value = d.localidade; if (d.uf) $("cd-uf").value = d.uf;
+      $("cd-cep-info").textContent = "Endereço preenchido pelo CEP. Falta o número."; $("cd-num").focus();
+    }).catch(function () { $("cd-cep-info").textContent = "Sem internet para buscar o CEP. Preencha à mão."; });
+  });
+  $("cd-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var d = {}; CAD.forEach(function (k) { d[CAD_K[k] || k] = $("cd-" + k).value.trim(); });
+    if (!d.nome && !d.empresa) { $("cd-erro").textContent = "Coloque pelo menos o nome ou a empresa."; return; }
+    if (d.aniv && !/^\d{1,2}\/\d{1,2}$/.test(d.aniv)) { $("cd-erro").textContent = "Aniversário no formato dia/mês, por exemplo 25/03."; return; }
+    d.uf = d.uf.toUpperCase();
+    var ed = cadEditando, id = ed.id || novoId(), velho = ed.id ? cache.clientes[ed.id] || {} : { criado: Date.now() };
+    d.liga = (velho.liga || []).concat(ed.liga || []).filter(function (k, i, a) { return a.indexOf(k) === i; });
+    gravar("clientes", id, Object.assign({}, velho, d)).then(function () { cliAberto = "id:" + id; fecharSheet("sh-cad"); renderClientes(); toast("Cadastro salvo."); });
+  });
+  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); renderSugestoes(); renderFeitos(); renderClientes(); pontosNav(); }
   renderTudo();
   iniciarDados();
 })();
