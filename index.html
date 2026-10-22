@@ -125,7 +125,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .wrap.sem-bar { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 /* Botões de baixo: as etapas do trabalho (bússola, vender, produzir, receber) */
 .nav-baixo { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding: 4px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
-.wrap.na-bussola .alerta { display: none; }
+/* os avisos do topo viraram sugestões da bússola e pontinhos nos botões de baixo */
+.wrap .alerta { display: none; }
 .nav-baixo .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
 .nav-baixo button { position: relative; border: 0; background: transparent; color: var(--muted); font: 600 12px var(--f-body); padding: 4px 2px 2px; cursor: pointer; display: grid; justify-items: center; gap: 1px; }
 .nav-baixo button i { font-style: normal; font-size: 20px; line-height: 26px; }
