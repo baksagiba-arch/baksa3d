@@ -128,16 +128,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 /* os avisos do topo viraram sugestões da bússola e pontinhos nos botões de baixo */
 .wrap .alerta { display: none; }
 /* Fases do pedido: bolinhas numa linha, da cotação ao pagamento */
-.passos { display: grid; grid-template-columns: repeat(var(--n, 7), 1fr); margin: 2px -4px 0; }
-.passo { position: relative; text-align: center; font-size: 10.5px; line-height: 1.2; color: var(--muted); min-width: 0; padding: 0 1px; }
-.passo .c { position: relative; z-index: 1; width: 18px; height: 18px; margin: 0 auto 4px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); display: grid; place-items: center; font: 700 10px var(--f-body); color: var(--accent-ink); }
-.passo::before { content: ""; position: absolute; top: 8px; right: 50%; width: 100%; height: 2px; background: var(--line); }
-.passo:first-child::before { display: none; }
-.passo.feito::before, .passo.agora::before { background: var(--accent); }
-.passo.feito .c { background: var(--accent); border-color: var(--accent); }
-.passo.agora .c { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.passo.agora span { color: var(--accent); font-weight: 700; }
-.passo.feito span { color: var(--ink); }
+.vfases { display: grid; padding: 4px 0 0; }
+.vf { display: flex; gap: 10px; position: relative; padding-bottom: 12px; }
+.vf::before { content: ""; position: absolute; left: 10px; top: 22px; bottom: 0; width: 2px; background: var(--line); }
+.vf:last-child { padding-bottom: 0; }
+.vf:last-child::before { display: none; }
+.vf.feito::before { background: var(--accent); }
+.vf .c { flex: none; position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); display: grid; place-items: center; font: 700 11px var(--f-body); color: var(--accent-ink); }
+.vf.feito .c { background: var(--accent); border-color: var(--accent); }
+.vf.agora .c { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.vf > div { flex: 1; min-width: 0; }
+.vf b { display: block; font-size: 14px; font-weight: 600; line-height: 22px; }
+.vf small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+.vf.futuro b { color: var(--muted); font-weight: 500; }
+.vf.agora b { color: var(--accent); }
+.vf.agora.warn b, .vf.agora.warn small { color: var(--warn); }
 .agora-txt { font-size: 13.5px; }
 .agora-txt b { color: var(--accent); }
 .agora-txt.warn b { color: var(--warn); }
@@ -2154,7 +2159,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var pags = pagamentos(p).slice().sort(function (a, b) { return (a.data || 0) - (b.data || 0); });
     var avista = p.condicao === "avista", nomeSinal = avista ? "Pago" : p.condicao === "pj" ? "Entrada" : "Sinal";
     var F = [
-      { id: "orcado", nome: "Orçado", feito: true, data: cot && cot.criado },
+      { id: "orcado", nome: "Orçado", feito: true, data: cot && cot.criado, cot: cot },
       { id: "aprovado", nome: "Aprovado", feito: true, data: p.criado },
       { id: "sinal", nome: nomeSinal, feito: avista ? !falta(p) : recebido(p) > 0, data: pags[0] && pags[0].data },
       { id: "imprimir", nome: "Imprimir", feito: ord >= 1, data: p.em_produzindo },
@@ -2170,12 +2175,18 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
   function blocoFases(p, idx, atrasado) {
     var r = fasesPedido(p), a = r.agora, txt = "", warn = atrasado, btn = null;
-    var passos = el("div", { class: "passos", style: "--n:" + r.F.length });
-    r.F.forEach(function (f) {
-      passos.appendChild(el("div", { class: "passo" + (f.feito ? " feito" : f === a ? " agora" : ""), title: f.data ? f.nome + " · " + dataBR(f.data) : f.nome }, [
-        el("div", { class: "c", "aria-hidden": "true", text: f.feito ? "✓" : "" }), el("span", { text: f.nome })
-      ]));
-    });
+    var cur = function (d) { return d ? dataBR(d).slice(0, 5) : ""; };
+    var pags = pagamentos(p);
+    // o que aparece embaixo de cada fase já feita ou ainda por vir
+    var info = {
+      orcado: function (f) { return [f.cot && f.cot.orcNumero ? "Orçamento " + f.cot.orcNumero : "", cur(f.data)].filter(Boolean).join(" · "); },
+      aprovado: function (f) { return [cur(f.data), p.prazo ? "entrega combinada " + prazoBR(p.prazo).slice(0, 5) : ""].filter(Boolean).join(" · "); },
+      sinal: function (f) { return f.feito && pags[0] ? brl.format(pags[0].valor || 0) + (pags[0].forma ? " no " + pags[0].forma : "") + " · " + cur(pags[0].data) : ""; },
+      imprimir: function (f) { return f.feito ? [IMPS[impDe(p)].nome, cur(f.data)].filter(Boolean).join(" · ") : "Fila da " + IMPS[impDe(p)].nome; },
+      pronto: function (f) { return cur(f.data); },
+      entregue: function (f) { return f.feito ? cur(f.data) : p.prazo ? "até " + prazoBR(p.prazo).slice(0, 5) : ""; },
+      pago: function (f) { return f.feito ? cur(f.data) : falta(p) ? "saldo " + brl.format(falta(p)) : ""; }
+    };
     if (a) {
       if (a.id === "sinal") {
         var sinal = p.condicao === "avista" ? falta(p) : p.condicao === "pj" ? centavos((p.valorTotal || 0) / 3) : centavos((p.valorTotal || 0) / 2);
@@ -2197,6 +2208,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         btn = { t: "Receber " + brl.format(falta(p)), f: function () { abrirPag(p); } };
       }
     }
+    var passos = el("div", { class: "vfases" });
+    r.F.forEach(function (f) {
+      var agora = f === a, sub = agora ? txt : info[f.id](f);
+      passos.appendChild(el("div", { class: "vf" + (f.feito ? " feito" : agora ? " agora" + (warn ? " warn" : "") : " futuro") }, [
+        el("span", { class: "c", "aria-hidden": "true", text: f.feito ? "✓" : "" }),
+        el("div", null, [el("b", { text: f.nome }), sub ? el("small", { text: sub }) : null])
+      ]));
+    });
     var mais = function () {
       var bts = [];
       if (idx > 0) bts.push({ texto: "Voltar para " + STATUS[idx - 1].nome.toLowerCase(), acao: function () { mudarStatus(p, STATUS[idx - 1].id); } });
@@ -2207,7 +2226,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     };
     return [
       passos,
-      a ? el("div", { class: "agora-txt" + (warn ? " warn" : "") }, [el("b", { text: "Agora: " }), txt]) : el("div", { class: "ped-ok", text: "Pedido concluído ✓" }),
+      a ? null : el("div", { class: "ped-ok", text: "Pedido concluído ✓" }),
       btn ? el("button", { type: "button", class: "ped-go", text: btn.t, onclick: btn.f }) : null,
       el("div", { class: "acts sec" }, [
         el("button", { type: "button", text: "Pagamentos", onclick: function () { abrirPag(p); } }),
@@ -2245,7 +2264,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
             el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + (p.filamento ? " · " + p.filamento : "") }),
             el("div", { class: "meta" + (atrasado ? " warn" : ""), text: textoPrazo(p) }),
-            textoCond(p) ? el("div", { class: "meta", text: textoCond(p) }) : null,
+            textoCond(p) ? el("div", { class: "meta", text: CONDICOES[p.condicao] ? CONDICOES[p.condicao].curto : textoCond(p) }) : null,
             (p.telefone || p.whatsapp || p.email) ? el("div", { class: "meta", text: [p.telefone ? "Tel. " + p.telefone : "", p.whatsapp && p.whatsapp !== p.telefone ? "WhatsApp " + p.whatsapp : (p.whatsapp ? "(WhatsApp)" : ""), p.email].filter(Boolean).join(" · ") }) : null
           ]),
           el("div", { class: "val" }, [brl.format(p.valorTotal), el("div", { class: "meta", text: p.frete ? "frete " + brl.format(p.frete) : "sem frete" })])
