@@ -137,6 +137,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .aviso-cli:last-child { border-bottom: 0; }
 .aviso-cli > div { flex: 1; min-width: 0; font-size: 14px; }
 .aviso-cli button, .aviso-cli a { flex: none; text-decoration: none; }
+.chips.peq button { padding: 5px 11px; font: 500 13px var(--f-body); }
+.chips button .n { opacity: .7; margin-left: 4px; }
+.chips button.auto { border-style: dashed; }
+.oferta { border: 1px solid var(--accent); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
 .box { border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; margin-top: 10px; }
 .box.cad { padding: 10px 12px; }
 .cad { display: grid; gap: 4px; font-size: 14px; }
@@ -358,6 +362,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="legenda" aria-label="Legenda das bolinhas">
       <span><i class="bol r"></i>Aniversário hoje</span><span><i class="bol o"></i>Deve</span><span><i class="bol a"></i>Orçamento esperando</span><span><i class="bol v"></i>Pedido pronto</span>
     </div>
+    <div class="field"><span class="lbl">Filtrar por interesse</span><div class="chips peq" id="cl-filtro" role="group" aria-label="Filtrar por interesse"></div></div>
+    <div class="oferta" id="cl-oferta" hidden>
+      <b id="cl-oferta-t"></b>
+      <div class="field"><label for="cl-msg">Mensagem para mandar (o app troca {nome} pelo nome de cada um)</label><textarea id="cl-msg" rows="3"></textarea></div>
+      <p class="hint">Toque em Oferecer em cada cliente para abrir o WhatsApp com a mensagem pronta.</p>
+    </div>
     <button type="button" class="mini" id="cl-novo" style="justify-self:start">+ Novo cliente</button>
     <div id="cl-lista" class="lista"></div>
     <p class="hint center">O app junta tudo do mesmo cliente pela empresa, pelo telefone/WhatsApp ou, sem eles, pelo nome.</p>
@@ -406,6 +416,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="field">
       <label for="nome">Nome da peça</label>
       <div class="inp"><input id="nome" class="txt" autocomplete="off" placeholder="Ex.: Suporte de motor" value="Suporte de motor"></div>
+    </div>
+    <div class="field">
+      <span class="lbl">Etiquetas da peça (opcional)</span>
+      <div class="chips peq" id="pc-tags-box" role="group" aria-label="Etiquetas da peça"></div>
+      <input type="hidden" id="pc-tags">
+      <p class="hint">Quem comprar esta peça ganha a etiqueta no cadastro. Assim, depois, dá para achar todo mundo que gosta do assunto.</p>
     </div>
 
     <div class="field">
@@ -1034,7 +1050,15 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var NOMES_NEG = { venda: "Preço cheio", favoravel: "Favorável", minimo: "Mínimo", desconto: "Desconto" };
   var ultimo = {};
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
-  var PECA = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
+  // Etiquetas: interesses (peça e cliente) e datas comemorativas (peça; o cliente herda ao comprar)
+  var TAGS = [["Gatos", "🐱"], ["Cachorros", "🐶"], ["Casa e decoração", "🏠"], ["Plantas e jardim", "🌱"], ["Cozinha", "🍳"], ["Games e geek", "🎮"], ["Futebol e esportes", "⚽"],
+    ["Infantil e brinquedos", "🧸"], ["Carros e motos", "🚗"], ["Ferramentas e oficina", "🔧"], ["Escritório e brindes", "💼"]];
+  var DATAS = [["Carnaval", "🎭"], ["Páscoa", "🐰"], ["Dia das Mães", "💐"], ["Dia dos Namorados", "❤️"], ["Festa Junina", "🌽"], ["Dia dos Pais", "👔"], ["Dia das Crianças", "🪁"], ["Halloween", "🎃"], ["Black Friday", "🏷️"], ["Natal e Ano Novo", "🎄"]];
+  function emojiTag(t) { var a = TAGS.concat(DATAS).filter(function (x) { return x[0] === t; })[0]; return a ? a[1] : "🔖"; }
+  function rotTag(t) { return emojiTag(t) + " " + t; }
+  function ehData(t) { return DATAS.some(function (x) { return x[0] === t; }); }
+  function lerTags(v) { return Array.isArray(v) ? v : String(v || "").split("|").filter(Boolean); }
+  var PECA = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "pc-tags", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
   var campos = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "potencia2", "deprec2", "horasDia", "margem", "impostos", "margemMin"];
 
   function carregar() {
@@ -1286,6 +1310,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   });
 
   carregar();
+  renderTagsPeca();
   calcular();
 
   /* ---------- Armazenamento: banco do app (compartilhado) ou, fora dele, este aparelho ---------- */
@@ -1455,7 +1480,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("c-titulo").textContent = titulo; $("c-texto").textContent = texto;
     $("c-campo-box").hidden = !campo;
     if (campo) {
-      $("c-campo").type = campo.tipo || "text"; $("c-campo").setAttribute("inputmode", campo.tipo ? "none" : "decimal");
+      $("c-campo").type = campo.tipo || "text"; $("c-campo").setAttribute("inputmode", campo.modo || (campo.tipo ? "none" : "decimal"));
       $("c-campo-lbl").textContent = campo.label; $("c-campo-u").textContent = campo.unidade || ""; $("c-campo").value = campo.valor || "";
     }
     var box = $("c-botoes"); box.textContent = "";
@@ -1466,7 +1491,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       } }));
     });
     abrirSheet("sh-conf");
-    if (campo && !campo.tipo) setTimeout(function () { $("c-campo").focus(); $("c-campo").select(); }, 50);
+    if (campo && (!campo.tipo || campo.modo)) setTimeout(function () { $("c-campo").focus(); $("c-campo").select(); }, 50);
   }
 
   /* ---------- Estoque ---------- */
@@ -1749,7 +1774,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       numero: proximoNumero(), criado: Date.now(),
       nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
       cliente: $("sv-cliente").value.trim(), telefone: $("sv-tel").value.trim(), prazo: $("sv-prazo").value,
-      whatsapp: $("cli-whats").value.trim(), email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(), empresa: $("cli-emp").value.trim(), linha: $("cli-linha").value,
+      whatsapp: $("cli-whats").value.trim(), email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(), empresa: $("cli-emp").value.trim(), linha: $("cli-linha").value, etiquetas: lerTags($("pc-tags").value),
       frete: frete, valorPecas: u.total, valorUnit: u.unit, valorTotal: u.total + frete,
       valorCheio: u.cheio, lucroCheio: u.lucroCheio, margemCheia: u.margemCheia, negTipo: u.negTipo, negDesc: u.negDesc,
       custo: u.custo, impostos: u.impostos, margem: u.margem, desperdicio: u.desp,
@@ -1788,7 +1813,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("limpar").addEventListener("click", function () {
     confirmar("Limpar para nova peça?", "Apaga cliente, resumo, nome da peça, quantidade, tempo, peso, embalagem e frete. Filamento, margem, desperdício e custos fixos continuam como estão.", [
       { texto: "Limpar", classe: "primary", acao: function () {
-        ["cli-nome", "cli-emp", "cli-tel", "cli-email", "cli-whats", "cli-resumo"].forEach(function (k) { $(k).value = ""; }); $("cli-linha").value = "b3d";
+        ["cli-nome", "cli-emp", "cli-tel", "cli-email", "cli-whats", "cli-resumo"].forEach(function (k) { $(k).value = ""; }); $("cli-linha").value = "b3d"; $("pc-tags").value = ""; renderTagsPeca();
         $("nome").value = ""; $("qtd").value = "1";
         $("horas").value = ""; $("minutos").value = ""; $("decimal").value = "";
         $("peso").value = ""; $("embalagem").value = ""; $("frete").value = "";
@@ -2554,7 +2579,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   /* ---------- Cotações ---------- */
-  var CAMPOS_COT = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "margem", "potencia", "kwh", "deprec", "impostos"];
+  var CAMPOS_COT = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "pc-tags", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "margem", "potencia", "kwh", "deprec", "impostos"];
   var cotAtual = null; // id da cotação aberta/salva por último
   function fotoEntradas() {
     var o = { modo: modo, imp: imp, desp: Number($("desp").value), filSel: $("fil-sel").value, negTipo: neg.tipo, negDesc: neg.desc };
@@ -2567,7 +2592,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var u = ultimo, f = filAtual(), e = fotoEntradas();
     return {
       criado: Date.now(), nome: $("nome").value.trim() || "Peça sem nome", qtd: u.q,
-      cliente: $("cli-nome").value.trim(), empresa: $("cli-emp").value.trim(), linha: $("cli-linha").value, telefone: $("cli-tel").value.trim(), whatsapp: $("cli-whats").value.trim(),
+      cliente: $("cli-nome").value.trim(), empresa: $("cli-emp").value.trim(), linha: $("cli-linha").value, etiquetas: lerTags($("pc-tags").value), telefone: $("cli-tel").value.trim(), whatsapp: $("cli-whats").value.trim(),
       email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
       valorUnit: u.unit, valorTotal: u.total, frete: u.frete, custo: u.custo, pesoTotal: u.peso, tempoTotal: u.tempo,
       margem: u.margem, filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "", impressora: imp,
@@ -2622,6 +2647,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var e = c.entradas || {};
     CAMPOS_COT.forEach(function (k) { if (e[k] != null && FIXOS.indexOf(k) < 0) $(k).value = e[k]; });
     $("cli-linha").value = e["cli-linha"] || c.linha || "b3d";
+    $("pc-tags").value = e["pc-tags"] || lerTags(c.etiquetas).join("|"); renderTagsPeca();
     setModo(e.modo || "hm", true);
     setImp(IMPS[e.imp] ? e.imp : "p1s", true);
     $("fil-sel").value = e.filSel && cache.filamentos[e.filSel] ? e.filSel : "";
@@ -2994,7 +3020,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   });
 
   /* ---------- Catálogo de peças salvas ---------- */
-  var CAMPOS_CAT = ["nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem"];
+  var CAMPOS_CAT = ["nome", "pc-tags", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "margem"];
   function listaCat() {
     return Object.keys(cache.catalogo).map(function (k) { return cache.catalogo[k]; })
       .sort(function (a, b) { return (a.nome || "").localeCompare(b.nome || "", "pt-BR"); });
@@ -3320,8 +3346,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       var cotsAbertas = rs.filter(function (r) { return r.tipo === "cot" && (r.x.status || "aberta") === "aberta"; }), vistas = {};
       cotsAbertas = cotsAbertas.filter(function (r) { var k = normTxt(r.x.nome); if (vistas[k]) return false; vistas[k] = 1; return true; }).map(function (r) { return r.x; });
       var linha = cd && cd.linha || (rs.filter(function (r) { return r.x.linha; })[0] || { x: {} }).x.linha || "b3d";
-      var ex = rs[0] ? rs[0].x : {};
-      return { id: cd ? "id:" + cd.id : g, cad: cd, emp: emp, nome: emp || nomes[0] || "Sem nome", nomes: nomes, tels: tels, regs: rs, peds: peds, cotsAbertas: cotsAbertas, chaves: chaves, linha: linha,
+      var ex = rs[0] ? rs[0].x : {}, tagsAuto = [];
+      peds.forEach(function (p) { lerTags(p.etiquetas).forEach(function (t) { if (tagsAuto.indexOf(t) < 0) tagsAuto.push(t); }); });
+      var tagsMao = lerTags(cd && cd.etiquetas), tags = tagsMao.slice();
+      tagsAuto.forEach(function (t) { if (tags.indexOf(t) < 0) tags.push(t); });
+      return { id: cd ? "id:" + cd.id : g, cad: cd, tags: tags, tagsMao: tagsMao, tagsAuto: tagsAuto, emp: emp, nome: emp || nomes[0] || "Sem nome", nomes: nomes, tels: tels, regs: rs, peds: peds, cotsAbertas: cotsAbertas, chaves: chaves, linha: linha,
         whats: cd && cd.whatsapp || ex.whatsapp || (tels[0] || ""), email: cd && cd.email || ex.email || "",
         prontos: peds.filter(function (p) { return p.status === "pronto"; }), aniv: anivHoje(cd),
         gasto: peds.reduce(function (s, p) { return s + (p.valorTotal || 0); }, 0), deve: peds.reduce(function (s, p) { return s + falta(p); }, 0),
@@ -3378,10 +3407,62 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     c.prontos.forEach(function (p) { L.push({ cor: "v", txt: "Pedido nº " + p.numero + " (" + p.nome + ") pronto. Combinar a entrega?", btn: "Ver pedido", acao: function () { abrirPedido(p); } }); });
     return L;
   }
+  // todas as etiquetas: as do app + as criadas pelo usuário (as que aparecem nos dados)
+  function tagsUsadas() {
+    var u = [];
+    if (cache) ["clientes", "pedidos", "cotacoes", "catalogo"].forEach(function (col) {
+      Object.keys(cache[col] || {}).forEach(function (k) {
+        var x = cache[col][k]; lerTags(x.etiquetas || (x.entradas && x.entradas["pc-tags"])).forEach(function (t) { if (u.indexOf(t) < 0) u.push(t); });
+      });
+    });
+    return u;
+  }
+  function tagsInteresse() {
+    var base = TAGS.map(function (x) { return x[0]; });
+    tagsUsadas().forEach(function (t) { if (base.indexOf(t) < 0 && !ehData(t)) base.push(t); });
+    return base;
+  }
+  function novaTag(cb) {
+    confirmar("Nova etiqueta", "Escreva o assunto, por exemplo Pesca ou Motos antigas.", [
+      { texto: "Criar", classe: "primary", acao: function (v, raw) { v = String(raw || "").trim(); if (v) cb(v.charAt(0).toUpperCase() + v.slice(1)); } }
+    ], { tipo: "text", modo: "text", label: "Etiqueta" });
+  }
+  function renderTagsPeca() {
+    var box = $("pc-tags-box"); if (!box) return; box.textContent = "";
+    var sel = lerTags($("pc-tags").value), todas = tagsInteresse().concat(DATAS.map(function (x) { return x[0]; }));
+    sel.forEach(function (t) { if (todas.indexOf(t) < 0) todas.push(t); });
+    function muda(t) { var i = sel.indexOf(t); if (i < 0) sel.push(t); else sel.splice(i, 1); $("pc-tags").value = sel.join("|"); renderTagsPeca(); salvar(); }
+    todas.forEach(function (t) { box.appendChild(el("button", { type: "button", "aria-pressed": sel.indexOf(t) > -1, text: rotTag(t), onclick: function () { muda(t); } })); });
+    box.appendChild(el("button", { type: "button", text: "+ nova", onclick: function () { novaTag(function (t) { if (sel.indexOf(t) < 0) muda(t); }); } }));
+  }
+  // grava o cadastro (cria se o cliente ainda não tem)
+  function gravarCadCli(c, patch) {
+    var cd = c.cad, id = cd ? cd.id : novoId(), x = c.x || {};
+    var base = cd ? cache.clientes[cd.id] || {} : { criado: Date.now(), nome: c.emp ? c.nomes[0] || "" : c.nome, empresa: c.emp, linha: c.linha, whatsapp: x.whatsapp || "", telefone: x.telefone || "", email: c.email };
+    var liga = lerTags(base.liga).concat(c.chaves).filter(function (k, i, a) { return a.indexOf(k) === i; });
+    cliAberto = "id:" + id;
+    return gravar("clientes", id, Object.assign({}, base, patch, { liga: liga }));
+  }
+  var cliTag = "", cliMsg = {};
+  function msgOferta(t) { return cliMsg[t] != null ? cliMsg[t] : "Oi {nome}! Tudo bem? Aqui é da Baksa 3D. Fizemos uma novidade de " + t.toLowerCase() + " que é a sua cara. Quer que eu mande as fotos?"; }
+  $("cl-msg").addEventListener("input", function () { if (cliTag) cliMsg[cliTag] = this.value; });
   function renderClientes() {
     var todos = clientes(), busca = normTxt($("cl-busca").value), box = $("cl-lista"); box.textContent = "";
     [].forEach.call($("cl-linha-seg").children, function (b) { b.setAttribute("aria-pressed", b.dataset.l === cliLinha); });
     var daLinha = todos.filter(function (c) { return !cliLinha || c.linha === cliLinha; });
+    // filtro por interesse: só mostra as etiquetas que algum cliente tem
+    var fb = $("cl-filtro"); fb.textContent = "";
+    var cont = {}; daLinha.forEach(function (c) { c.tags.forEach(function (t) { cont[t] = (cont[t] || 0) + 1; }); });
+    var comTag = Object.keys(cont).sort(function (a, b) { return cont[b] - cont[a] || a.localeCompare(b, "pt-BR"); });
+    if (cliTag && !cont[cliTag]) cliTag = "";
+    comTag.forEach(function (t) { fb.appendChild(el("button", { type: "button", "aria-pressed": cliTag === t, onclick: function () { cliTag = cliTag === t ? "" : t; renderClientes(); } }, [rotTag(t), el("span", { class: "n", text: String(cont[t]) })])); });
+    fb.parentNode.hidden = !comTag.length;
+    $("cl-oferta").hidden = !cliTag;
+    if (cliTag) {
+      $("cl-oferta-t").textContent = rotTag(cliTag) + ": " + cont[cliTag] + (cont[cliTag] === 1 ? " cliente" : " clientes");
+      if (document.activeElement !== $("cl-msg")) $("cl-msg").value = msgOferta(cliTag);
+      daLinha = daLinha.filter(function (c) { return c.tags.indexOf(cliTag) > -1; });
+    }
     $("cl-n").textContent = daLinha.length;
     $("cl-volta").textContent = daLinha.filter(function (c) { return c.peds.length > 1; }).length;
     var dl = $("lista-emp"); dl.textContent = "";
@@ -3390,7 +3471,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     if (todos.some(function (c) { return c.aniv; })) $("t-clientes").appendChild(el("span", { class: "ponto", "aria-label": "aniversário hoje" }));
     var lista = daLinha.filter(function (c) {
       var cd = c.cad || {};
-      return !busca || normTxt([c.nome, c.nomes.join(" "), c.tels.join(" "), c.tels.join(" ").replace(/\D/g, ""), cd.cidade, cd.apelido].join(" ")).indexOf(busca) > -1;
+      return !busca || normTxt([c.nome, c.nomes.join(" "), c.tels.join(" "), c.tels.join(" ").replace(/\D/g, ""), cd.cidade, cd.apelido, c.tags.join(" ")].join(" ")).indexOf(busca) > -1;
     });
     lista.forEach(function (c) {
       var aberto = cliAberto === c.id, cd = c.cad;
@@ -3400,11 +3481,16 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
             el("h4", null, [(c.aniv ? "🎂 " : "") + c.nome, bolinhas(c)]),
             el("div", { class: "meta", text: [c.emp ? c.nomes.join(", ") : c.nomes.slice(1).join(", "), c.tels[0], cliLinha ? "" : c.linha === "bds" ? "BDS" : ""].filter(Boolean).join(" · ") || "Sem contato" }),
             el("div", { class: "meta", text: c.peds.length ? c.peds.length + (c.peds.length === 1 ? " pedido" : " pedidos") + " · última compra " + dataBR(c.ultima) : "Ainda não comprou" }),
-            c.deve > 0.005 ? el("div", { class: "meta warn", text: "Deve " + brl.format(c.deve) }) : null
+            c.deve > 0.005 ? el("div", { class: "meta warn", text: "Deve " + brl.format(c.deve) }) : null,
+            c.tags.length ? el("div", { class: "meta", text: c.tags.map(emojiTag).join(" ") }) : null
           ]),
           el("div", { class: "val" }, [brl.format(c.gasto), el("div", { class: "meta", text: aberto ? "fechar ▲" : "ver ▼" })])
         ])
       ];
+      if (cliTag) {
+        var lo = waLink(c.whats, msgOferta(cliTag).replace(/\{nome\}/g, primeiroNome(c) || ""));
+        kids.push(el("div", { class: "acts" }, [lo ? el("a", { class: "go", href: lo, target: "_blank", rel: "noopener", text: "Oferecer no WhatsApp", style: "text-decoration:none" }) : el("span", { class: "meta", text: "Sem WhatsApp no cadastro" })]));
+      }
       if (aberto) {
         // 1) o que tem para fazer com este cliente
         var av = avisosCli(c);
@@ -3412,7 +3498,21 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           return el("div", { class: "aviso-cli" }, [el("i", { class: "bol " + a.cor, "aria-hidden": "true" }), el("div", { text: a.txt }),
             a.href ? el("a", { class: "mini", href: a.href, target: "_blank", rel: "noopener", text: a.btn, onclick: a.acao || null }) : el("button", { type: "button", class: "mini", text: a.btn, onclick: a.acao })]);
         })));
-        // 2) cadastro
+        // 2) interesses: toque para marcar; os que vieram das compras ficam tracejados
+        var ib = el("div", { class: "chips peq", role: "group", "aria-label": "Interesses" });
+        var ints = tagsInteresse(); c.tags.forEach(function (t) { if (ints.indexOf(t) < 0) ints.push(t); });
+        ints.forEach(function (t) {
+          var auto = c.tagsAuto.indexOf(t) > -1 && c.tagsMao.indexOf(t) < 0, on = c.tags.indexOf(t) > -1;
+          ib.appendChild(el("button", { type: "button", class: auto ? "auto" : "", "aria-pressed": on, text: rotTag(t), title: auto ? "Veio de uma compra" : "",
+            onclick: function () {
+              if (auto) { toast("Esta veio de uma compra (" + t + ")."); return; }
+              var m = c.tagsMao.slice(), i = m.indexOf(t); if (i < 0) m.push(t); else m.splice(i, 1);
+              gravarCadCli(c, { etiquetas: m }).then(function () { renderClientes(); });
+            } }));
+        });
+        ib.appendChild(el("button", { type: "button", text: "+ nova", onclick: function () { novaTag(function (t) { gravarCadCli(c, { etiquetas: c.tagsMao.concat([t]) }).then(function () { renderClientes(); }); }); } }));
+        kids.push(el("div", { class: "box cad" }, [el("div", { class: "k", text: "Interesses (toque para marcar)" }), ib]));
+        // 3) cadastro
         if (cd) {
           var L = [];
           function lin(k, v) { if (v) L.push(el("div", null, [el("div", { class: "k", text: k }), el("div", { text: v, style: "white-space:pre-line" })])); }
@@ -3421,7 +3521,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           lin("Aniversário", cd.aniv); lin("Gosta de ser chamado", cd.apelido); lin("Família", cd.familia); lin("Pets", cd.pets); lin("Time", cd.time); lin("Gostos e hobbies", cd.gostos); lin("Observações", cd.obs);
           kids.push(el("div", { class: "box cad" }, L.length ? L : [el("div", { class: "meta", text: "Cadastro ainda vazio." })]));
         } else kids.push(el("p", { class: "hint", text: "Este cliente ainda não tem cadastro. Toque em Cadastro para guardar endereço, documento e as informações pessoais." }));
-        // 3) histórico em bolinhas na vertical, do mais recente para o mais antigo (pedido abre no toque)
+        // 4) histórico em bolinhas na vertical, do mais recente para o mais antigo (pedido abre no toque)
         if (c.regs.length) {
           var linha = el("div", { class: "linha" });
           c.regs.slice(0, 20).forEach(function (r) {
@@ -3486,7 +3586,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     d.liga = (velho.liga || []).concat(ed.liga || []).filter(function (k, i, a) { return a.indexOf(k) === i; });
     gravar("clientes", id, Object.assign({}, velho, d)).then(function () { cliAberto = "id:" + id; fecharSheet("sh-cad"); renderClientes(); toast("Cadastro salvo."); });
   });
-  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); renderSugestoes(); renderFeitos(); renderClientes(); pontosNav(); }
+  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); renderSugestoes(); renderFeitos(); renderClientes(); renderTagsPeca(); pontosNav(); }
   renderTudo();
   iniciarDados();
 })();
