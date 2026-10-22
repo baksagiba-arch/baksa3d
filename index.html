@@ -202,6 +202,9 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .hj-t.warn { color: var(--warn); }
 .hj { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--line); }
 .hj:last-child { border-bottom: 0; }
+.hj.ativo b { color: var(--accent); }
+.fila-acts { margin-top: 6px; }
+.fila-acts button { padding: 6px 10px; }
 .hj > div { min-width: 0; }
 .hj b { display: block; font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
 .hj .meta { color: var(--muted); font-size: 12.5px; }
@@ -284,6 +287,15 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         <button type="button" id="q-mais" aria-label="Aumentar quantidade">+</button>
       </div>
       <p class="hint">Tempo e peso abaixo são de uma peça. O app multiplica pela quantidade.</p>
+    </div>
+
+    <div class="field">
+      <span class="lbl" id="lbl-imp">Impressora (a mesma escolhida no fatiador)</span>
+      <div class="seg" role="group" aria-labelledby="lbl-imp" id="imp-seg">
+        <button type="button" data-imp="p1s" aria-pressed="true">Bambu P1S</button>
+        <button type="button" data-imp="a1m" aria-pressed="false">Bambu A1 Mini</button>
+      </div>
+      <p class="hint" id="imp-fila"></p>
     </div>
 
     <div class="field">
@@ -404,13 +416,25 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <summary><h2>Custos fixos e impostos</h2></summary>
       <div class="grid">
         <div class="row2">
-          <div class="field"><label for="potencia">Potência da impressora</label>
+          <div class="field"><label for="potencia">Potência da P1S</label>
             <div class="inp"><input id="potencia" inputmode="decimal"><span class="u">kW</span></div></div>
+          <div class="field"><label for="deprec">Depreciação P1S</label>
+            <div class="inp"><span class="pre">R$</span><input id="deprec" inputmode="decimal"><span class="u">/h</span></div></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="potencia2">Potência da A1 Mini</label>
+            <div class="inp"><input id="potencia2" inputmode="decimal"><span class="u">kW</span></div></div>
+          <div class="field"><label for="deprec2">Depreciação A1 Mini</label>
+            <div class="inp"><span class="pre">R$</span><input id="deprec2" inputmode="decimal"><span class="u">/h</span></div></div>
+        </div>
+        <p class="hint">Depreciação + manutenção por hora de impressão. A da A1 Mini segue a proporção do preço pago (R$ 3.640 contra R$ 10.900 da P1S).</p>
+        <div class="row2">
           <div class="field"><label for="kwh">Custo do kWh</label>
             <div class="inp"><span class="pre">R$</span><input id="kwh" inputmode="decimal"></div></div>
+          <div class="field"><label for="horasDia">Impressão por dia</label>
+            <div class="inp"><input id="horasDia" inputmode="decimal"><span class="u">h</span></div></div>
         </div>
-        <div class="field"><label for="deprec">Depreciação + manutenção (P1S)</label>
-          <div class="inp"><span class="pre">R$</span><input id="deprec" inputmode="decimal"><span class="u">por hora</span></div></div>
+        <p class="hint">As horas por dia servem para a fila calcular quando cada pedido fica pronto.</p>
         <div class="field"><label for="impostos">Impostos</label>
           <div class="inp"><input id="impostos" inputmode="decimal"><span class="u">%</span></div></div>
         <div class="field"><label for="margemMin">Margem mínima para desconto</label>
@@ -451,6 +475,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <section id="hoje-box" aria-labelledby="h-hoje" hidden>
       <h2 id="h-hoje">Resumo do dia</h2>
       <div id="hoje" class="hj-g"></div>
+    </section>
+    <section id="fila-box" aria-labelledby="h-fila" hidden>
+      <h2 id="h-fila">Fila das impressoras</h2>
+      <p class="hint">Pedidos de clientes por ordem de prazo. Use ↑ para passar um pedido na frente: o app avisa se outro atrasar. Peças próprias ficam no fim e não atrasam ninguém.</p>
+      <div id="fila" class="lista"></div>
     </section>
     <div class="seg" role="group" aria-label="Filtro de pedidos">
       <button type="button" id="p-abertos" aria-pressed="true">Em aberto</button>
@@ -594,6 +623,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="chips" id="sv-receb-chips"><button type="button" data-f="0">Nada</button><button type="button" data-f="0.5">Metade (sinal)</button><button type="button" data-f="1">Tudo</button></div>
       <p class="hint" id="sv-falta"></p></div>
     <div class="field" id="sv-forma-box" hidden><label for="sv-forma">Forma de pagamento</label><div class="selwrap"><select id="sv-forma"><option>Pix</option><option>Dinheiro</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Transferência</option><option>Outro</option></select></div></div>
+    <p class="hint" id="sv-fila"></p>
     <p class="hint warn" id="sv-aviso"></p>
     <div class="d-acoes">
       <button type="button" class="primary" id="sv-ok">Confirmar venda</button>
@@ -637,6 +667,24 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <button type="button" id="pg-fechar">Fechar</button>
     </div>
   </div>
+</div>
+
+<div class="sheet" id="sh-prop" hidden role="dialog" aria-modal="true" aria-labelledby="pr-titulo">
+  <form class="card" id="pr-form" novalidate>
+    <h3 id="pr-titulo">Peça própria na fila</h3>
+    <p class="hint">Peças decorativas da casa. Ficam no fim da fila e não contam no prazo dos clientes.</p>
+    <div class="field"><label for="pr-nome">Nome da peça</label><div class="inp"><input id="pr-nome" class="txt" autocomplete="off" placeholder="Ex.: Vaso espiral"></div></div>
+    <div class="field"><label for="pr-imp">Impressora</label><div class="selwrap"><select id="pr-imp"><option value="p1s">Bambu P1S</option><option value="a1m">Bambu A1 Mini</option></select></div></div>
+    <div class="row2">
+      <div class="field"><label for="pr-h">Tempo total</label><div class="inp"><input id="pr-h" inputmode="numeric"><span class="u">h</span></div></div>
+      <div class="field"><label for="pr-m">&nbsp;</label><div class="inp"><input id="pr-m" inputmode="numeric" aria-label="Minutos"><span class="u">min</span></div></div>
+    </div>
+    <p class="hint err" id="pr-erro" aria-live="polite"></p>
+    <div class="d-acoes">
+      <button type="submit" class="primary">Pôr na fila</button>
+      <button type="button" id="pr-cancelar">Cancelar</button>
+    </div>
+  </form>
 </div>
 
 <div class="sheet" id="sh-cli" hidden role="dialog" aria-modal="true" aria-labelledby="ec-titulo">
@@ -684,6 +732,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="field"><label for="or-envio">Modo de envio</label><div class="inp"><input id="or-envio" class="txt" autocomplete="off"></div></div>
       <div class="field"><label for="or-frete">Frete</label><div class="inp"><span class="pre">R$</span><input id="or-frete" inputmode="decimal"></div></div>
     </div>
+    <div class="field"><label for="or-prazo">Prazo de entrega</label><div class="inp"><input id="or-prazo" class="txt" type="date"></div>
+      <p class="hint" id="or-prazo-info"></p></div>
     <div class="field"><label for="or-cond">Condição de pagamento (nós definimos)</label><div class="selwrap"><select id="or-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: 3x (entrada / 21 DD / 42 DD)</option></select></div></div>
     <div class="field"><label for="or-pag">Forma de pagamento</label><textarea id="or-pag" rows="3"></textarea></div>
     <div class="lines"><div class="ln total"><span>Total do orçamento</span><span id="or-total"></span></div></div>
@@ -745,7 +795,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
 <script>
 (function () {
-  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, margem: 5, impostos: 15, margemMin: 2 };
+  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, potencia2: 0.2, deprec2: 0.25, horasDia: 16, margem: 5, impostos: 15, margemMin: 2 };
+  // As duas impressoras: cada uma com sua potência e depreciação. A A1 Mini é uns 12% mais lenta que a P1S.
+  var IMPS = { p1s: { nome: "P1S", pot: "potencia", dep: "deprec", vel: 1 }, a1m: { nome: "A1 Mini", pot: "potencia2", dep: "deprec2", vel: 1.12 } };
+  var ORDEM_IMPS = ["p1s", "a1m"];
+  var imp = "p1s";
+  function impDe(x) { return IMPS[x && x.impressora] ? x.impressora : "p1s"; }
   var DESP_PADRAO = 30;
   var KEY = "custo3d.v1";
   var $ = function (id) { return document.getElementById(id); };
@@ -773,7 +828,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var ultimo = {};
   function qtd() { return Math.max(1, Math.round(parse($("qtd").value)) || 1); }
   var PECA = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
-  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "margem", "impostos", "margemMin"];
+  var campos = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "potencia2", "deprec2", "horasDia", "margem", "impostos", "margemMin"];
 
   function carregar() {
     var s = null;
@@ -785,13 +840,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     // a margem mínima padrão mudou de ×3 para ×2 (21/10/2026): aparelhos que ainda estão no padrão antigo passam para o novo
     try { if (!localStorage.getItem("baksa3d.mm2")) { if (s && s.margemMin === 3) { s.margemMin = 2; $("margemMin").value = numN.format(2); localStorage.setItem(KEY, JSON.stringify(s)); } localStorage.setItem("baksa3d.mm2", "1"); } } catch (e) {}
     if (s && s.modo) setModo(s.modo, true);
+    if (s && IMPS[s.imp]) setImp(s.imp, true);
     if (s && s.neg && NOMES_NEG[s.neg.tipo]) neg = { tipo: s.neg.tipo, desc: +s.neg.desc || 0 };
     $("desp").value = s && s.desp != null ? s.desp : DESP_PADRAO;
     // última peça custeada
     if (s && s.peca) PECA.forEach(function (k) { if (s.peca[k] != null) $(k).value = s.peca[k]; });
   }
   function salvar() {
-    var s = { modo: modo, filamento: parse($("filamento").value), desp: Number($("desp").value), filSel: $("fil-sel").value, neg: neg, peca: {} };
+    var s = { modo: modo, imp: imp, filamento: parse($("filamento").value), desp: Number($("desp").value), filSel: $("fil-sel").value, neg: neg, peca: {} };
     PECA.forEach(function (k) { s.peca[k] = $(k).value; });
     Object.keys(PADRAO).forEach(function (k) { s[k] = parse($(k).value); });
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
@@ -817,8 +873,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     return r;
   }
   // Custos fixos e desperdício valem os de agora, para cotações abertas acompanharem as mudanças
-  function fixosAtuais() {
-    return { potencia: parse($("potencia").value), kwh: parse($("kwh").value), deprec: parse($("deprec").value),
+  function fixosAtuais(i) {
+    var I = IMPS[i] || IMPS[imp];
+    return { potencia: parse($(I.pot).value), kwh: parse($("kwh").value), deprec: parse($(I.dep).value),
       imp: parse($("impostos").value), dp: Number($("desp").value) };
   }
 
@@ -869,6 +926,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       negTipo: negou ? neg.tipo : "venda", negDesc: negou && rCheio.total > 0 ? Math.round((1 - total / rCheio.total) * 1000) / 10 : 0 });
     [].forEach.call($("chips").children, function (b) { b.setAttribute("aria-pressed", parse(b.dataset.m) === vBase.m); });
     medirLucro(vBase, v, r);
+    if (typeof renderImpFila === "function") renderImpFila();
   }
 
   // Preço combinado: a margem de verdade sai da margem de venda, da mínima ou do desconto escolhido (embalagem e frete ficam fora)
@@ -958,6 +1016,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     calcular();
   }
 
+  function setImp(novo, silencioso) {
+    imp = IMPS[novo] ? novo : "p1s";
+    [].forEach.call($("imp-seg").children, function (b) { b.setAttribute("aria-pressed", b.dataset.imp === imp); });
+    if (!silencioso) { calcular(); salvar(); }
+  }
+  [].forEach.call($("imp-seg").children, function (b) { b.addEventListener("click", function () { setImp(b.dataset.imp); }); });
   $("modo-hm").addEventListener("click", function () { setModo("hm"); });
   $("modo-dec").addEventListener("click", function () { setModo("dec"); });
   $("desp").addEventListener("input", function () { calcular(); salvar(); });
@@ -1018,8 +1082,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   calcular();
 
   /* ---------- Armazenamento: banco do app (compartilhado) ou, fora dele, este aparelho ---------- */
-  var COLS = ["filamentos", "pedidos", "cotacoes", "catalogo"];
-  var cache = { filamentos: {}, pedidos: {}, cotacoes: {}, catalogo: {} };
+  var COLS = ["filamentos", "pedidos", "cotacoes", "catalogo", "fila"];
+  var cache = { filamentos: {}, pedidos: {}, cotacoes: {}, catalogo: {}, fila: {} };
   var pronto = false, modoDados = "carregando", db = null;
   function lsGet(c) { try { return JSON.parse(localStorage.getItem("baksa3d." + c) || "{}"); } catch (e) { return {}; } }
   function lsSet(c) { try { localStorage.setItem("baksa3d." + c, JSON.stringify(cache[c])); } catch (e) {} }
@@ -1156,11 +1220,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function porKg(f) { return f.pesoCarretel > 0 ? f.valorCarretel / f.pesoCarretel * 1000 : 0; }
   function abrirSheet(id) { $(id).hidden = false; }
   function fecharSheet(id) { $(id).hidden = true; }
-  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc"].forEach(function (id) {
+  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) fecharSheet(id); });
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc"].forEach(fecharSheet);
+    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop"].forEach(fecharSheet);
   });
 
   // confirmação dentro da página (o app não usa janelas do navegador)
@@ -1395,20 +1459,35 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     [["Peça", ($("nome").value.trim() || "Peça sem nome") + " × " + u.q],
      ["Valor das peças", brl.format(u.total)],
      ["Filamento", f ? filLabel(f) : "Manual (sem baixa)"],
-     ["Consumo", kg(u.peso) + " · " + hm(u.tempo)]
+     ["Consumo", kg(u.peso) + " · " + hm(u.tempo)],
+     ["Impressora", IMPS[imp].nome]
     ].forEach(function (r) { box.appendChild(el("div", { class: "ln" }, [el("span", { text: r[0] }), el("span", { text: r[1] })])); });
     atualizaReceb();
     var av = "";
     if (!f) av = "Sem filamento do estoque escolhido: o peso não será descontado.";
     else if (f.gramas < u.peso) av = "Estoque de " + filLabel(f) + " tem só " + kg(f.gramas) + ". O pedido será registrado e o estoque ficará zerado ou negativo.";
     $("sv-aviso").textContent = av;
+    avisoFila();
   }
+  // Com este pedido entrando na fila (pelo prazo dele), algum pedido atrasa?
+  function avisoFila() {
+    var pz = $("sv-prazo").value, antes = agenda(imp), depois = agenda(imp, { h: ultimo.tempo, prazo: pz });
+    var este = depois.itens.filter(function (it) { return it.tipo === "novo"; })[0], atr = novosAtrasos(antes, depois), t = [];
+    if (este) t.push("Na fila da " + IMPS[imp].nome + " fica pronto " + diaBR(este.fim) + (este.atraso ? ", depois do prazo" + (este.atraso24 ? "" : " (virando a madrugada: " + diaBR(este.fim24) + ", dá no prazo)") : "") + ".");
+    if (atr.length) t.push("Com o prazo escolhido ele passa na frente e atrasa: " + textoAtrasos(atr) + ".");
+    $("sv-fila").textContent = t.join(" ");
+    $("sv-fila").className = "hint" + (atr.length || (este && este.atraso) ? " warn" : "");
+  }
+  $("sv-prazo").addEventListener("input", avisoFila);
   $("abrir-venda").addEventListener("click", function () {
     calcular();
     var cc = cotAtual && cache.cotacoes[cotAtual], oc = cc && cc.orc && cc.orc.cond;
     $("sv-cond").value = CONDICOES[oc] ? oc : "pf"; condVenda();
     if (CONDICOES[oc]) $("sv-cond-info").textContent = "Definida no orçamento " + (cc.orcNumero || "") + ". " + $("sv-cond-info").textContent;
-    $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = $("frete").value; $("sv-prazo").value = ""; $("sv-receb").value = "";
+    $("sv-cliente").value = $("cli-nome").value.trim(); $("sv-tel").value = $("cli-tel").value.trim() || $("cli-whats").value.trim(); $("sv-frete").value = $("frete").value; $("sv-receb").value = "";
+    // prazo: o combinado no orçamento ou, sem ele, quando a fila da impressora deixa a peça pronta
+    var sug = sugestaoPrazo(imp, ultimo.tempo);
+    $("sv-prazo").value = cc && cc.orc && cc.orc.prazo || sug.data;
     resumoVenda();
     abrirSheet("sh-venda");
   });
@@ -1453,7 +1532,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       custo: u.custo, impostos: u.impostos, margem: u.margem, desperdicio: u.desp,
       pesoTotal: u.peso, tempoTotal: u.tempo,
       filamentoId: f ? f.id : "", filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
-      baixa: f ? u.peso : 0, status: "fila",
+      baixa: f ? u.peso : 0, status: "fila", impressora: imp,
       condicao: $("sv-cond").value,
       pagamentos: receb > 0 ? [{ valor: receb, forma: $("sv-forma").value, data: Date.now() }] : [],
       pago: receb >= u.total + frete - 0.005
@@ -1528,6 +1607,177 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       if (st === "entregue" && falta(p) > 0) toast("Entregue. Ainda falta receber " + brl.format(falta(p)) + ".");
     });
   }
+
+  /* ---------- Fila das impressoras: ordem, quando cada pedido fica pronto e quem atrasa ---------- */
+  function horasDia() { var h = parse($("horasDia").value); return h > 0 ? Math.min(24, h) : 16; }
+  var SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+  function diaBR(ms) {
+    var iso = isoDe(ms), d = diasAte(iso), p = iso.split("-");
+    return d === 0 ? "hoje" : d === 1 ? "amanhã" : SEMANA[new Date(ms).getDay()] + " " + p[2] + "/" + p[1];
+  }
+  function diasEntre(a, b) { return diasAte(b) - diasAte(a); }
+  // Sem ajuste à mão, a fila de clientes segue o prazo (o mais urgente primeiro); sem prazo vai para o fim
+  function chaveFila(x) {
+    if (x.filaPos != null) return x.filaPos;
+    if (x.prazo) { var a = x.prazo.split("-"); return Date.UTC(+a[0], a[1] - 1, +a[2], 12); }
+    return 4e12 + (x.criado || 0);
+  }
+  function porChave(a, b) { return chaveFila(a.x) - chaveFila(b.x) || (a.x.criado || 0) - (b.x.criado || 0); }
+  // extra: um pedido que ainda não existe ({ h, prazo }), para ver o efeito dele antes de fechar
+  function agenda(i, extra) {
+    var agora = Date.now(), prod = [], cli = [], prop = [];
+    listaPed().forEach(function (p) {
+      var st = p.status || "fila";
+      if ((st !== "fila" && st !== "produzindo") || impDe(p) !== i) return;
+      var it = { tipo: "ped", x: p, h: p.tempoTotal || 0 };
+      (st === "produzindo" ? prod : cli).push(it);
+    });
+    Object.keys(cache.fila || {}).forEach(function (k) {
+      var x = cache.fila[k]; if (impDe(x) !== i) return;
+      var it = { tipo: "prop", x: x, h: x.horas || 0 };
+      (x.status === "produzindo" ? prod : prop).push(it);
+    });
+    if (extra) cli.push({ tipo: "novo", x: { prazo: extra.prazo || "", criado: agora }, h: extra.h || 0 });
+    prod.sort(function (a, b) { return (a.x.em_produzindo || 0) - (b.x.em_produzindo || 0); });
+    cli.sort(porChave); prop.sort(porChave);
+    var cum = 0, fator = 24 / horasDia(), r = { itens: [], cli: cli, prop: prop, prod: prod };
+    function passa(it) {
+      // o que já está imprimindo conta só o que falta
+      it.resto = it.x.status === "produzindo" ? Math.max(0, it.h - (agora - (it.x.em_produzindo || agora)) / 36e5) : it.h;
+      cum += it.resto;
+      it.fim = agora + cum * fator * 36e5; it.fim24 = agora + cum * 36e5;
+      if (it.tipo !== "prop" && it.x.prazo) {
+        it.atraso = Math.max(0, diasEntre(it.x.prazo, isoDe(it.fim)));
+        it.atraso24 = Math.max(0, diasEntre(it.x.prazo, isoDe(it.fim24)));
+      }
+      r.itens.push(it);
+    }
+    prod.forEach(passa); cli.forEach(passa);
+    r.horasCli = cum;
+    prop.forEach(passa);
+    return r;
+  }
+  function sugestaoPrazo(i, h) {
+    var ag = agenda(i), agora = Date.now(), t = ag.horasCli + (h || 0);
+    var fim = agora + t * 24 / horasDia() * 36e5, fim24 = agora + t * 36e5;
+    return { fila: ag.horasCli, fim: fim, fim24: fim24, data: isoDe(fim), data24: isoDe(fim24) };
+  }
+  function atrasados(ag) { var o = {}; ag.itens.forEach(function (it) { if (it.atraso && it.tipo === "ped") o[it.x.id] = it; }); return o; }
+  // Pedidos que passam a atrasar com o novo pedido (ou com uma mudança na fila)
+  function novosAtrasos(antes, depois) {
+    var a = atrasados(antes), d = atrasados(depois);
+    return Object.keys(d).filter(function (id) { return !a[id] || d[id].atraso > a[id].atraso; }).map(function (id) { return d[id]; });
+  }
+  function nomeItem(it) { return it.tipo === "ped" ? "nº " + it.x.numero + " · " + (it.x.cliente || "Sem cliente") : it.tipo === "novo" ? "Este pedido" : it.x.nome; }
+  function textoAtrasos(lista) {
+    return lista.map(function (it) { return nomeItem(it) + " (pronto " + diaBR(it.fim) + ", entrega " + prazoBR(it.x.prazo) + ")"; }).join("; ");
+  }
+  // Na aba Custo: como está a fila da impressora escolhida e quando esta peça ficaria pronta
+  function renderImpFila() {
+    if (!cache || !pronto) { $("imp-fila").textContent = ""; return; }
+    var s = sugestaoPrazo(imp, ultimo.tempo), N = IMPS[imp].nome;
+    $("imp-fila").textContent = (s.fila > 0.01 ? "Fila da " + N + ": " + hm(s.fila) + " de pedidos. " : "A " + N + " está livre de pedidos. ") +
+      "Esta peça ficaria pronta " + diaBR(s.fim) + (isoDe(s.fim24) !== s.data ? " (virando a madrugada: " + diaBR(s.fim24) + ")" : "") + ".";
+  }
+  function moverFila(it, lista, dir) {
+    var idx = lista.indexOf(it), viz = lista[idx + dir]; if (!viz) return;
+    var kA = chaveFila(it.x), kB = chaveFila(viz.x);
+    var novoA = kB === kA ? kB - dir : kB, novoB = kB === kA ? kB : kA;
+    var col = it.tipo === "ped" ? "pedidos" : "fila";
+    function aplica() {
+      gravar(col, it.x.id, Object.assign({}, it.x, { filaPos: novoA }));
+      if (novoB !== kB || viz.x.filaPos == null) gravar(col, viz.x.id, Object.assign({}, viz.x, { filaPos: novoB }));
+    }
+    if (it.tipo !== "ped" || dir > 0) { aplica(); return; }
+    // furar a fila: antes de mudar, mostra quem atrasaria
+    var i = impDe(it.x), antes = agenda(i), guardaA = it.x.filaPos, guardaB = viz.x.filaPos;
+    it.x.filaPos = novoA; viz.x.filaPos = novoB;
+    var depois = agenda(i); it.x.filaPos = guardaA; viz.x.filaPos = guardaB;
+    if (guardaA == null) delete it.x.filaPos; if (guardaB == null) delete viz.x.filaPos;
+    var atr = novosAtrasos(antes, depois);
+    if (!atr.length) { aplica(); toast("Nº " + it.x.numero + " passou na frente sem atrasar ninguém."); return; }
+    confirmar("Passar nº " + it.x.numero + " na frente?", "Com isso atrasa" + (atr.length > 1 ? "m" : "") + ": " + textoAtrasos(atr) + ".", [
+      { texto: "Passar na frente mesmo assim", classe: "primary", acao: aplica }
+    ]);
+  }
+  function trocarImp(it) {
+    var de = impDe(it.x), para = de === "p1s" ? "a1m" : "p1s";
+    var h = Math.round(it.h * IMPS[para].vel / IMPS[de].vel * 100) / 100;
+    var col = it.tipo === "ped" ? "pedidos" : "fila";
+    confirmar("Mudar para a " + IMPS[para].nome + "?", nomeItem(it) + ". O tempo passa de " + hm(it.h) + " para " + hm(h) + " (a A1 Mini é uns 12% mais lenta)." + (para === "a1m" ? " Confira se a peça cabe na mesa de 18 cm." : ""), [
+      { texto: "Mudar de impressora", classe: "primary", acao: function () {
+        var d = { impressora: para }; d[col === "pedidos" ? "tempoTotal" : "horas"] = h;
+        var novo = Object.assign({}, it.x, d); delete novo.filaPos;
+        gravar(col, it.x.id, novo).then(function () { toast("Agora na fila da " + IMPS[para].nome + "."); });
+      } }
+    ]);
+  }
+  function statusFila(it, st) {
+    if (it.tipo === "ped") { mudarStatus(it.x, st === "feito" ? "pronto" : st); return; }
+    if (st === "feito") { apagar("fila", it.x.id).then(function () { toast("Peça própria concluída."); }); return; }
+    gravar("fila", it.x.id, Object.assign({}, it.x, { status: st, em_produzindo: Date.now() }));
+  }
+  function linhaFila(it, lista, n) {
+    var p = it.x, ped = it.tipo === "ped", imprimindo = p.status === "produzindo";
+    var titulo = ped ? "nº " + p.numero + " · " + (p.cliente || "Sem cliente") : p.nome;
+    var info = (ped ? p.nome + " × " + p.qtd + " · " : "") + (imprimindo ? "imprimindo, falta " + hm(it.resto) : hm(it.h)) + " · pronto " + diaBR(it.fim);
+    var pz = ped ? textoPrazo(p) : "";
+    var aviso = it.atraso ? "Atrasa " + it.atraso + (it.atraso === 1 ? " dia" : " dias") + (it.atraso24 ? ". Mesmo virando a madrugada atrasa " + it.atraso24 + (it.atraso24 === 1 ? " dia" : " dias") + "." : ". Virando a madrugada fica pronto " + diaBR(it.fim24) + " e dá no prazo.") : "";
+    var outra = impDe(p) === "p1s" ? "A1 Mini" : "P1S";
+    return el("div", { class: "hj" + (imprimindo ? " ativo" : "") }, [
+      el("div", null, [
+        el("b", { text: (imprimindo ? "▶ " : n + ". ") + titulo }),
+        el("div", { class: "meta", text: info }),
+        pz ? el("div", { class: "meta", text: pz }) : null,
+        aviso ? el("div", { class: "meta warn", text: aviso }) : null,
+        el("div", { class: "acts fila-acts" }, [
+          !imprimindo && lista.indexOf(it) > 0 ? el("button", { type: "button", "aria-label": "Passar na frente", text: "↑", onclick: function () { moverFila(it, lista, -1); } }) : null,
+          !imprimindo && lista.indexOf(it) < lista.length - 1 ? el("button", { type: "button", "aria-label": "Passar para trás", text: "↓", onclick: function () { moverFila(it, lista, 1); } }) : null,
+          el("button", { type: "button", class: "go", text: imprimindo ? "Terminou" : "Começar", onclick: function () { statusFila(it, imprimindo ? "feito" : "produzindo"); } }),
+          el("button", { type: "button", text: "→ " + outra, onclick: function () { trocarImp(it); } })
+        ])
+      ])
+    ]);
+  }
+  function renderFila() {
+    var box = $("fila"); box.textContent = "";
+    var algum = false;
+    ORDEM_IMPS.forEach(function (i) {
+      var ag = agenda(i), N = IMPS[i].nome, n = 0;
+      var nAtr = ag.itens.filter(function (it) { return it.atraso; }).length;
+      if (ag.itens.length) algum = true;
+      var kids = [
+        el("div", { class: "top" }, [el("div", null, [
+          el("h4", { text: "Bambu " + N }),
+          el("div", { class: "meta" + (nAtr ? " warn" : ""), text: ag.horasCli > 0.01 ? hm(ag.horasCli) + " de pedidos · livre para clientes " + diaBR(Date.now() + ag.horasCli * 24 / horasDia() * 36e5) + (nAtr ? " · " + nAtr + (nAtr === 1 ? " pedido atrasa" : " pedidos atrasam") : "") : "Sem pedidos de clientes na fila." })
+        ])])
+      ];
+      var g = el("div", { class: "hj-g" });
+      ag.prod.forEach(function (it) { g.appendChild(linhaFila(it, ag.prod, 0)); });
+      ag.cli.forEach(function (it) { g.appendChild(linhaFila(it, ag.cli, ++n)); });
+      if (ag.prop.length) {
+        g.appendChild(el("div", { class: "hj-t", text: "Peças próprias · quando sobrar tempo" }));
+        ag.prop.forEach(function (it, k) { g.appendChild(linhaFila(it, ag.prop, k + 1)); });
+      }
+      kids.push(g);
+      kids.push(el("div", { class: "acts" }, [el("button", { type: "button", text: "+ Peça própria", onclick: function () { abrirPropria(i); } })]));
+      box.appendChild(el("div", { class: "item" }, kids));
+    });
+    $("fila-box").hidden = verEntregues || !pronto;
+  }
+  function abrirPropria(i) {
+    $("pr-nome").value = ""; $("pr-imp").value = i; $("pr-h").value = ""; $("pr-m").value = ""; $("pr-erro").textContent = "";
+    abrirSheet("sh-prop"); setTimeout(function () { $("pr-nome").focus(); }, 50);
+  }
+  $("pr-cancelar").addEventListener("click", function () { fecharSheet("sh-prop"); });
+  $("pr-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var h = parse($("pr-h").value) + parse($("pr-m").value) / 60;
+    if (!$("pr-nome").value.trim()) { $("pr-erro").textContent = "Dê um nome para a peça."; return; }
+    if (!(h > 0)) { $("pr-erro").textContent = "Informe o tempo de impressão."; return; }
+    gravar("fila", novoId(), { nome: $("pr-nome").value.trim(), impressora: $("pr-imp").value, horas: Math.round(h * 100) / 100, criado: Date.now(), status: "fila" })
+      .then(function () { fecharSheet("sh-prop"); toast("Peça própria na fila da " + IMPS[$("pr-imp").value].nome + "."); });
+  });
 
   /* ---------- Editar os dados do cliente depois (pedido ou cotação) ---------- */
   var cliEditando = null; // { col, id }
@@ -1672,7 +1922,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           el("div", null, [
             el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + (p.filamento ? " · " + p.filamento : "") }),
-            el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) }),
+            el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) + (p.status !== "entregue" ? " · " + IMPS[impDe(p)].nome : "") }),
             el("div", { class: "meta" + (atrasado ? " warn" : ""), text: textoPrazo(p) }),
             textoCond(p) ? el("div", { class: "meta", text: textoCond(p) }) : null,
             (p.telefone || p.whatsapp || p.email) ? el("div", { class: "meta", text: [p.telefone ? "Tel. " + p.telefone : "", p.whatsapp && p.whatsapp !== p.telefone ? "WhatsApp " + p.whatsapp : (p.whatsapp ? "(WhatsApp)" : ""), p.email].filter(Boolean).join(" · ") }) : null
@@ -1695,7 +1945,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       ]));
     });
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: !pronto ? "Carregando pedidos…" : verEntregues ? "Nenhum pedido entregue ainda." : "Nenhum pedido em aberto. Registre uma venda na aba Custo." }));
-    renderHoje();
+    renderHoje(); renderFila();
     var atras = abertos.filter(function (p) { return p.prazo && p.prazo < hoje; }).length;
     var etapas = STATUS.slice(0, 3).map(function (s) {
       var n = abertos.filter(function (p) { return (p.status || "fila") === s.id; }).length;
@@ -1895,7 +2145,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   var CAMPOS_COT = ["cli-nome", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "margem", "potencia", "kwh", "deprec", "impostos"];
   var cotAtual = null; // id da cotação aberta/salva por último
   function fotoEntradas() {
-    var o = { modo: modo, desp: Number($("desp").value), filSel: $("fil-sel").value, negTipo: neg.tipo, negDesc: neg.desc };
+    var o = { modo: modo, imp: imp, desp: Number($("desp").value), filSel: $("fil-sel").value, negTipo: neg.tipo, negDesc: neg.desc };
     CAMPOS_COT.forEach(function (k) { o[k] = $(k).value; });
     return o;
   }
@@ -1908,7 +2158,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       cliente: $("cli-nome").value.trim(), telefone: $("cli-tel").value.trim(), whatsapp: $("cli-whats").value.trim(),
       email: $("cli-email").value.trim(), resumo: $("cli-resumo").value.trim(),
       valorUnit: u.unit, valorTotal: u.total, frete: u.frete, custo: u.custo, pesoTotal: u.peso, tempoTotal: u.tempo,
-      margem: u.margem, filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
+      margem: u.margem, filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "", impressora: imp,
       valorCheio: u.cheio, negTipo: u.negTipo, negDesc: u.negDesc,
       entradas: e, assinatura: assinatura(e), status: status || "aberta", pedidoNumero: pedidoNumero || 0
     };
@@ -1951,7 +2201,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var f = e.filSel && cache.filamentos[e.filSel];
     var q = Math.max(1, Math.round(parse(e.qtd)) || 1);
     var t = e.modo === "dec" ? parse(e.decimal) : parse(e.horas) + parse(e.minutos) / 60;
-    var v = Object.assign(fixosAtuais(), { t: t, peso: parse(e.peso), q: q, m: parse(e.margem), emb: parse(e.embalagem),
+    var v = Object.assign(fixosAtuais(IMPS[e.imp] ? e.imp : "p1s"), { t: t, peso: parse(e.peso), q: q, m: parse(e.margem), emb: parse(e.embalagem),
       kg: f ? Math.round(porKg(f) * 100) / 100 : parse(e.filamento) });
     v.m = margemNeg(v, e.negTipo, +e.negDesc || 0, parse($("margemMin").value));
     return conta(v);
@@ -1960,6 +2210,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var e = c.entradas || {};
     CAMPOS_COT.forEach(function (k) { if (e[k] != null && FIXOS.indexOf(k) < 0) $(k).value = e[k]; });
     setModo(e.modo || "hm", true);
+    setImp(IMPS[e.imp] ? e.imp : "p1s", true);
     $("fil-sel").value = e.filSel && cache.filamentos[e.filSel] ? e.filSel : "";
     if (e.filSel && !cache.filamentos[e.filSel]) toast("O filamento desta cotação não está mais no estoque. Usando o preço salvo.");
     $("filamento").readOnly = false;
@@ -2177,15 +2428,26 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       it.querySelector(".or-sel").checked = x.id === c.id || marcadas.indexOf(x.id) > -1;
       it.querySelector(".or-sel").disabled = x.id === c.id;
       it.querySelector(".or-desc").value = desc;
-      it.querySelector(".or-sel").addEventListener("change", totalOrc);
+      it.querySelector(".or-sel").addEventListener("change", function () { totalOrc(); prazoOrc(); });
     });
     $("or-frete").value = numN.format(o.frete != null ? o.frete : valoresCot(c).frete);
     var docNum = (o.doc || "").replace(/\D/g, "");
     $("or-cond").value = CONDICOES[o.cond] ? o.cond : docNum.length === 14 ? "pj" : "pf";
     $("or-pag").value = o.pagamento || "";
     $("or-erro").textContent = "";
+    prazoOrc(o.prazo || "");
     totalOrc();
     abrirSheet("sh-orc");
+  }
+  // Prazo do orçamento: os itens entram no fim da fila de cada impressora
+  function prazoOrc(salvo) {
+    var horas = {};
+    itensOrc().forEach(function (i) { var k = IMPS[i.c.impressora] ? i.c.impressora : "p1s"; horas[k] = (horas[k] || 0) + (i.c.tempoTotal || 0); });
+    var fim = 0, fim24 = 0;
+    Object.keys(horas).forEach(function (k) { var s = sugestaoPrazo(k, horas[k]); fim = Math.max(fim, s.fim); fim24 = Math.max(fim24, s.fim24); });
+    if (!fim) fim = fim24 = Date.now();
+    if (salvo !== undefined) $("or-prazo").value = salvo || isoDe(fim);
+    $("or-prazo-info").textContent = "Pela fila de hoje fica pronto " + diaBR(fim) + (isoDe(fim24) !== isoDe(fim) ? " (virando a madrugada: " + diaBR(fim24) + ")" : "") + ". Some o tempo de envio se for mandar pelo correio.";
   }
   function itensOrc() {
     return [].map.call($("or-itens").children, function (it) {
@@ -2276,7 +2538,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     doc.setDrawColor(120); doc.line(X + 126, y + 19.3, X + W, y + 19.3);
     doc.setFont("helvetica", "normal");
     barra(X, y, 110, "Comentários ou Instruções Especiais", [200, 200, 200]);
-    var pag = doc.splitTextToSize("Forma de Pagamento:\n" + d.pagamento, 106);
+    var pag = doc.splitTextToSize((d.prazo ? "Prazo de entrega: " + prazoBR(d.prazo) + "\n\n" : "") + "Forma de Pagamento:\n" + d.pagamento, 106);
     doc.setFontSize(9); doc.text(pag, X + 2, y + 10.5);
     doc.rect(X, y + 6, 110, Math.max(22, pag.length * 4.2 + 6));
     y += Math.max(32, pag.length * 4.2 + 14) + 10;
@@ -2298,7 +2560,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var d = { marca: $("or-marca").value, numero: $("or-num").value.trim() || proximoOrc(new Date().getFullYear()), data: $("or-data").value || hojeISO(),
       empresa: $("or-emp").value.trim(), contato: $("or-contato").value.trim(), doc: $("or-doc").value.trim(),
       cidade: $("or-cidade").value.trim(), telefone: $("or-tel").value.trim(), envio: $("or-envio").value.trim(),
-      cond: $("or-cond").value, pagamento: $("or-pag").value.trim(), itens: itens, subtotal: sub, frete: frete, total: sub + frete };
+      cond: $("or-cond").value, pagamento: $("or-pag").value.trim(), prazo: $("or-prazo").value, itens: itens, subtotal: sub, frete: frete, total: sub + frete };
     var pdf = montarPDF(d), nomeArq = "Orcamento_" + d.numero + (d.empresa ? " - " + d.empresa.replace(/[\\/:*?"<>|]/g, "") : "") + ".pdf";
     var blob = pdf.output("blob"), arq = null;
     try { arq = new File([blob], nomeArq, { type: "application/pdf" }); } catch (x) {}
@@ -2311,7 +2573,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     }
     var desc = {}; itens.forEach(function (i) { desc[i.c.id] = i.desc; });
     var orc = { marca: d.marca, data: d.data, empresa: d.empresa, contato: d.contato, doc: d.doc, cidade: d.cidade, telefone: d.telefone, envio: d.envio,
-      frete: frete, cond: d.cond, pagamento: d.pagamento === textoPagamento(d.total, d.cond) ? "" : d.pagamento, itens: itens.map(function (i) { return i.c.id; }), desc: desc };
+      frete: frete, prazo: d.prazo, cond: d.cond, pagamento: d.pagamento === textoPagamento(d.total, d.cond) ? "" : d.pagamento, itens: itens.map(function (i) { return i.c.id; }), desc: desc };
     gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orcHist: (c.orcHist || []).concat([d.numero]), orc: orc, retorno: Date.now() }));
     itens.forEach(function (i) { if (i.c.id !== c.id) gravar("cotacoes", i.c.id, Object.assign({}, i.c, { orcNumero: d.numero })); });
     fecharSheet("sh-orc"); toast("Orçamento " + d.numero + " gerado.");
@@ -2449,7 +2711,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     r.readAsText(arq);
   });
 
-  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); }
+  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); }
   renderTudo();
   iniciarDados();
 })();
