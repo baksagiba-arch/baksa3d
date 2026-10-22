@@ -127,6 +127,28 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .nav-baixo { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding: 4px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
 /* os avisos do topo viraram sugestões da bússola e pontinhos nos botões de baixo */
 .wrap .alerta { display: none; }
+/* Fases do pedido: bolinhas numa linha, da cotação ao pagamento */
+.vfases { display: grid; padding: 4px 0 0; }
+.vf { display: flex; gap: 10px; position: relative; padding-bottom: 12px; }
+.vf::before { content: ""; position: absolute; left: 10px; top: 22px; bottom: 0; width: 2px; background: var(--line); }
+.vf:last-child { padding-bottom: 0; }
+.vf:last-child::before { display: none; }
+.vf.feito::before { background: var(--accent); }
+.vf .c { flex: none; position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); display: grid; place-items: center; font: 700 11px var(--f-body); color: var(--accent-ink); }
+.vf.feito .c { background: var(--accent); border-color: var(--accent); }
+.vf.agora .c { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.vf > div { flex: 1; min-width: 0; }
+.vf b { display: block; font-size: 14px; font-weight: 600; line-height: 22px; }
+.vf small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+.vf.futuro b { color: var(--muted); font-weight: 500; }
+.vf.agora b { color: var(--accent); }
+.vf.agora.warn b, .vf.agora.warn small { color: var(--warn); }
+.agora-txt { font-size: 13.5px; }
+.agora-txt b { color: var(--accent); }
+.agora-txt.warn b { color: var(--warn); }
+.ped-go { width: 100%; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font: 700 15px var(--f-body); padding: 13px; cursor: pointer; }
+.ped-ok { text-align: center; color: var(--accent); font-weight: 600; font-size: 14px; }
+.acts.sec button { flex: 1; }
 .nav-baixo .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
 .nav-baixo button { position: relative; border: 0; background: transparent; color: var(--muted); font: 600 12px var(--f-body); padding: 4px 2px 2px; cursor: pointer; display: grid; justify-items: center; gap: 1px; }
 .nav-baixo button i { font-style: normal; font-size: 20px; line-height: 26px; }
@@ -2129,6 +2151,90 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     } });
     confirmar("Excluir pedido nº " + p.numero + "?", (p.cliente || "Sem cliente") + " · " + p.nome + " × " + p.qtd + " · " + brl.format(p.valorTotal), bts);
   }
+  // Fases do pedido, na ordem do processo. Cada uma: feita ou não, quando, e o que fazer para avançar.
+  function fasesPedido(p) {
+    var ord = { fila: 0, produzindo: 1, pronto: 2, entregue: 3 }[p.status || "fila"] || 0;
+    var cot = null;
+    Object.keys(cache.cotacoes).forEach(function (k) { var c = cache.cotacoes[k]; if (c.status === "pedido" && c.pedidoNumero === p.numero && (!cot || c.criado < cot.criado)) cot = c; });
+    var pags = pagamentos(p).slice().sort(function (a, b) { return (a.data || 0) - (b.data || 0); });
+    var avista = p.condicao === "avista", nomeSinal = avista ? "Pago" : p.condicao === "pj" ? "Entrada" : "Sinal";
+    var F = [
+      { id: "orcado", nome: "Orçado", feito: true, data: cot && cot.criado, cot: cot },
+      { id: "aprovado", nome: "Aprovado", feito: true, data: p.criado },
+      { id: "sinal", nome: nomeSinal, feito: avista ? !falta(p) : recebido(p) > 0, data: pags[0] && pags[0].data },
+      { id: "imprimir", nome: "Imprimir", feito: ord >= 1, data: p.em_produzindo },
+      { id: "pronto", nome: "Pronto", feito: ord >= 2, data: p.em_pronto },
+      { id: "entregue", nome: "Entregue", feito: ord >= 3, data: p.em_entregue }
+    ];
+    if (!avista) F.push({ id: "pago", nome: "Pago", feito: !falta(p), data: !falta(p) && pags.length ? pags[pags.length - 1].data : null });
+    // o sinal vem antes de imprimir; depois que a impressão começou, quem manda é a produção
+    var agora = null;
+    if (!F[2].feito && ord === 0) agora = F[2];
+    else F.slice(3).some(function (f) { if (!f.feito) { agora = f; return true; } });
+    return { F: F, agora: agora, ord: ord };
+  }
+  function blocoFases(p, idx, atrasado) {
+    var r = fasesPedido(p), a = r.agora, txt = "", warn = atrasado, btn = null;
+    var cur = function (d) { return d ? dataBR(d).slice(0, 5) : ""; };
+    var pags = pagamentos(p);
+    // o que aparece embaixo de cada fase já feita ou ainda por vir
+    var info = {
+      orcado: function (f) { return [f.cot && f.cot.orcNumero ? "Orçamento " + f.cot.orcNumero : "", cur(f.data)].filter(Boolean).join(" · "); },
+      aprovado: function (f) { return [cur(f.data), p.prazo ? "entrega combinada " + prazoBR(p.prazo).slice(0, 5) : ""].filter(Boolean).join(" · "); },
+      sinal: function (f) { return f.feito && pags[0] ? brl.format(pags[0].valor || 0) + (pags[0].forma ? " no " + pags[0].forma : "") + " · " + cur(pags[0].data) : ""; },
+      imprimir: function (f) { return f.feito ? [IMPS[impDe(p)].nome, cur(f.data)].filter(Boolean).join(" · ") : "Fila da " + IMPS[impDe(p)].nome; },
+      pronto: function (f) { return cur(f.data); },
+      entregue: function (f) { return f.feito ? cur(f.data) : p.prazo ? "até " + prazoBR(p.prazo).slice(0, 5) : ""; },
+      pago: function (f) { return f.feito ? cur(f.data) : falta(p) ? "saldo " + brl.format(falta(p)) : ""; }
+    };
+    if (a) {
+      if (a.id === "sinal") {
+        var sinal = p.condicao === "avista" ? falta(p) : p.condicao === "pj" ? centavos((p.valorTotal || 0) / 3) : centavos((p.valorTotal || 0) / 2);
+        txt = (p.condicao === "avista" ? "Receber o pagamento antes de imprimir: " : "Receber " + a.nome.toLowerCase() + " de ") + brl.format(sinal) + ".";
+        btn = { t: "Registrar " + (p.condicao === "avista" ? "pagamento" : a.nome.toLowerCase()), f: function () { abrirPag(p); } };
+      } else if (a.id === "imprimir") {
+        var ag = agenda(impDe(p)), it = ag.itens.filter(function (x) { return x.x.id === p.id; })[0];
+        txt = "Na fila da " + IMPS[impDe(p)].nome + (it ? ", fica pronto " + diaBR(it.fim) : "") + "."; warn = warn || !!(it && it.atraso);
+        btn = { t: "Começar a imprimir", f: function () { mudarStatus(p, "produzindo"); } };
+      } else if (a.id === "pronto") {
+        var falt = Math.max(0, (p.tempoTotal || 0) - (Date.now() - (p.em_produzindo || Date.now())) / 36e5);
+        txt = "Imprimindo na " + IMPS[impDe(p)].nome + (falt > 0.01 ? ", falta " + hm(falt) : ", já deve ter terminado") + ".";
+        btn = { t: "Terminou a impressão", f: function () { mudarStatus(p, "pronto"); } };
+      } else if (a.id === "entregue") {
+        txt = "Peça pronta. " + textoPrazo(p) + "."; warn = !!(p.prazo && diasAte(p.prazo) <= 0);
+        btn = { t: "Marcar entregue", f: function () { mudarStatus(p, "entregue"); } };
+      } else if (a.id === "pago") {
+        txt = "Entregue. Faltam " + brl.format(falta(p)) + " para fechar."; warn = true;
+        btn = { t: "Receber " + brl.format(falta(p)), f: function () { abrirPag(p); } };
+      }
+    }
+    var passos = el("div", { class: "vfases" });
+    r.F.forEach(function (f) {
+      var agora = f === a, sub = agora ? txt : info[f.id](f);
+      passos.appendChild(el("div", { class: "vf" + (f.feito ? " feito" : agora ? " agora" + (warn ? " warn" : "") : " futuro") }, [
+        el("span", { class: "c", "aria-hidden": "true", text: f.feito ? "✓" : "" }),
+        el("div", null, [el("b", { text: f.nome }), sub ? el("small", { text: sub }) : null])
+      ]));
+    });
+    var mais = function () {
+      var bts = [];
+      if (idx > 0) bts.push({ texto: "Voltar para " + STATUS[idx - 1].nome.toLowerCase(), acao: function () { mudarStatus(p, STATUS[idx - 1].id); } });
+      if (a && a.id === "sinal") bts.push({ texto: "Começar a imprimir sem " + a.nome.toLowerCase(), acao: function () { mudarStatus(p, "produzindo"); } });
+      if (p.status !== "entregue") bts.push({ texto: p.prazo ? "Mudar prazo" : "Pôr prazo", acao: function () { editarPrazo(p); } });
+      bts.push({ texto: "Excluir pedido", classe: "danger", acao: function () { excluirPed(p); } });
+      confirmar("Pedido nº " + p.numero, (p.cliente || "Sem cliente") + " · " + p.nome + " × " + p.qtd, bts);
+    };
+    return [
+      passos,
+      a ? null : el("div", { class: "ped-ok", text: "Pedido concluído ✓" }),
+      btn ? el("button", { type: "button", class: "ped-go", text: btn.t, onclick: btn.f }) : null,
+      el("div", { class: "acts sec" }, [
+        el("button", { type: "button", text: "Pagamentos", onclick: function () { abrirPag(p); } }),
+        el("button", { type: "button", text: "Cliente", onclick: function () { editarCliente("pedidos", p); } }),
+        el("button", { type: "button", text: "Mais…", onclick: mais })
+      ])
+    ];
+  }
   function renderPedidos() {
     $("p-abertos").setAttribute("aria-pressed", !verEntregues);
     $("p-entregues").setAttribute("aria-pressed", verEntregues);
@@ -2157,27 +2263,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           el("div", null, [
             el("h4", { text: (p.cliente || "Sem cliente") + " · nº " + p.numero }),
             el("div", { class: "meta", text: p.nome + " × " + p.qtd + (p.filamento ? " · " + p.filamento : "") }),
-            el("div", { class: "meta", text: "Entrou " + dataBR(p.criado) + (p.status !== "entregue" ? " · " + IMPS[impDe(p)].nome : "") }),
             el("div", { class: "meta" + (atrasado ? " warn" : ""), text: textoPrazo(p) }),
-            textoCond(p) ? el("div", { class: "meta", text: textoCond(p) }) : null,
+            textoCond(p) ? el("div", { class: "meta", text: CONDICOES[p.condicao] ? CONDICOES[p.condicao].curto : textoCond(p) }) : null,
             (p.telefone || p.whatsapp || p.email) ? el("div", { class: "meta", text: [p.telefone ? "Tel. " + p.telefone : "", p.whatsapp && p.whatsapp !== p.telefone ? "WhatsApp " + p.whatsapp : (p.whatsapp ? "(WhatsApp)" : ""), p.email].filter(Boolean).join(" · ") }) : null
           ]),
           el("div", { class: "val" }, [brl.format(p.valorTotal), el("div", { class: "meta", text: p.frete ? "frete " + brl.format(p.frete) : "sem frete" })])
         ]),
-        p.resumo ? el("div", { class: "resumo", text: p.resumo }) : null,
-        el("div", { class: "acts" }, [
-          el("span", { class: "pill" + (atrasado ? " warn" : ""), text: atrasado ? "Atrasado · " + nomeStatus(p.status) : nomeStatus(p.status) }),
-          el("span", { class: "pill" + (falta(p) ? " warn" : ""), text: textoPago(p) })
-        ]),
-        el("div", { class: "acts" }, [
-          prox ? el("button", { type: "button", class: "go", text: "Marcar " + prox.nome.toLowerCase(), onclick: function () { mudarStatus(p, prox.id); } }) : null,
-          idx > 0 ? el("button", { type: "button", text: "Voltar etapa", onclick: function () { mudarStatus(p, STATUS[idx - 1].id); } }) : null,
-          p.status !== "entregue" ? el("button", { type: "button", text: p.prazo ? "Mudar prazo" : "Pôr prazo", onclick: function () { editarPrazo(p); } }) : null,
-          el("button", { type: "button", text: falta(p) ? "Receber pagamento" : "Ver pagamentos", onclick: function () { abrirPag(p); } }),
-          el("button", { type: "button", text: p.cliente ? "Editar cliente" : "Pôr cliente", onclick: function () { editarCliente("pedidos", p); } }),
-          el("button", { type: "button", class: "del", text: "Excluir", onclick: function () { excluirPed(p); } })
-        ])
-      ]));
+        p.resumo ? el("div", { class: "resumo", text: p.resumo }) : null
+      ].concat(blocoFases(p, idx, atrasado))));
     });
     if (!lista.length) box.appendChild(el("div", { class: "empty", text: !pronto ? "Carregando pedidos…" : verEntregues ? "Nenhum pedido entregue ainda." : "Nenhum pedido em aberto. Registre uma venda na aba Custo." }));
     renderHoje(); renderFila();
