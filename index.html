@@ -38,7 +38,7 @@
 
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
-.wrap { max-width: 520px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 calc(150px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 18px; }
+.wrap { max-width: 520px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 calc(210px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 18px; }
 
 header { padding-block: 22px 4px; display: grid; gap: 4px; }
 .brand { display: flex; align-items: center; gap: 10px; }
@@ -101,7 +101,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .scale { display: flex; justify-content: space-between; color: var(--muted); font: 500 11.5px var(--f-num); }
 .reset { justify-self: start; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 8px 12px; font: 500 13px var(--f-body); cursor: pointer; }
 
-.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--bar); color: var(--bar-ink); padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); padding-top: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); z-index: 5; }
+.bar { position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom, 0px)); background: var(--bar); color: var(--bar-ink); padding-bottom: 12px; padding-top: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); z-index: 5; }
 .bar .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto auto; gap: 2px 14px; align-items: end; }
 .demo-btn { grid-row: span 2; align-self: center; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font: 600 13px var(--f-body); padding: 12px 12px; cursor: pointer; }
 .inp input.txt { font: 500 16px var(--f-body); }
@@ -118,11 +118,47 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .d-acoes button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 12px; font: 600 14px var(--f-body); cursor: pointer; }
 .d-acoes button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
-.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 4; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 4; display: grid; grid-template-columns: repeat(var(--n, 3), 1fr); gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .tabs button { border: 0; background: transparent; color: var(--muted); font: 600 14px var(--f-display); letter-spacing: .01em; padding: 10px 2px; min-width: 0; border-radius: 7px; cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 .panel { display: grid; gap: 18px; }
-.wrap.sem-bar { padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
+.wrap.sem-bar { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+/* Botões de baixo: as etapas do trabalho (bússola, vender, produzir, receber) */
+.nav-baixo { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding: 4px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
+.wrap.na-bussola .alerta { display: none; }
+.nav-baixo .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.nav-baixo button { position: relative; border: 0; background: transparent; color: var(--muted); font: 600 12px var(--f-body); padding: 4px 2px 2px; cursor: pointer; display: grid; justify-items: center; gap: 1px; }
+.nav-baixo button i { font-style: normal; font-size: 20px; line-height: 26px; }
+.nav-baixo button[aria-current="true"] { color: var(--accent); }
+.nav-baixo .badge { position: absolute; top: 0; left: calc(50% + 6px); font: 700 10.5px var(--f-body); font-style: normal; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 1px 6px; }
+.nav-baixo .ponto { position: absolute; top: 4px; left: calc(50% + 12px); width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--surface); }
+/* Bússola */
+.ola { display: grid; gap: 2px; }
+.ola b { font: 700 21px/1.15 var(--f-display); }
+.ola span { color: var(--muted); font-size: 14px; }
+.sg { display: grid; gap: 8px; }
+.sg-t { font: 600 12px var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+.sg-i { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; display: flex; gap: 10px; align-items: center; }
+.sg-i > div { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.35; }
+.sg-i small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.sg-i .tmp { flex: none; font: 600 11px var(--f-body); color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.sg-i button, .sg-i a { flex: none; border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 8px 11px; font: 600 13px var(--f-body); cursor: pointer; text-decoration: none; }
+.sg-i.leve button, .sg-i.leve a { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.sg-i.urg { border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.sg-ok { background: var(--accent-soft); border-radius: 12px; padding: 18px; text-align: center; font-size: 15px; }
+.sg-ok b { display: block; font: 700 22px var(--f-display); color: var(--accent); }
+.feito-top { background: var(--accent-soft); border-radius: 12px; padding: 16px; text-align: center; }
+.feito-top b { display: block; font: 700 26px/1.1 var(--f-display); color: var(--accent); }
+.feito-top span { font-size: 14px; }
+/* Linha do tempo: bolinhas ligadas por uma linha, para tudo que é fluxo */
+.linha { display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 14px 2px; }
+.linha .st { display: flex; gap: 10px; position: relative; padding-bottom: 14px; }
+.linha .st::before { content: ""; position: absolute; left: 10px; top: 22px; bottom: 0; width: 2px; background: var(--accent); }
+.linha .st:last-child::before { display: none; }
+.linha .c { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 700 12px var(--f-body); z-index: 1; }
+.linha .st > div { flex: 1; min-width: 0; font-size: 14px; line-height: 22px; }
+.linha .st small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+.linha .hr { flex: none; color: var(--muted); font-size: 12.5px; line-height: 22px; font-variant-numeric: tabular-nums; }
 .selwrap { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding-left: 12px; }
 .selwrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .selwrap select { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 500 15px var(--f-body); padding: 12px 12px 12px 0; outline: none; }
@@ -173,7 +209,7 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .resumo { font-size: 13px; color: var(--ink); background: var(--bg); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .shead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .mini { border: 1px solid var(--line); background: transparent; color: var(--accent); border-radius: 999px; padding: 6px 12px; font: 600 13px var(--f-body); cursor: pointer; white-space: nowrap; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); text-align: center; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(170px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); text-align: center; }
 .graf { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; align-items: end; height: 150px; padding-top: 18px; }
 .graf button { position: relative; height: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; }
 .graf .b-ent, .graf .b-luc { position: absolute; bottom: 0; left: 18%; right: 18%; border-radius: 4px 4px 0 0; }
@@ -246,12 +282,44 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   <button type="button" class="alerta" id="alerta-est" hidden><span class="ic" aria-hidden="true">!</span><span id="alerta-txt"></span></button>
 
   <nav class="tabs" role="tablist" aria-label="Seções">
+    <button type="button" role="tab" id="t-sugestoes" aria-controls="tab-sugestoes" aria-selected="false">Sugestões do dia</button>
+    <button type="button" role="tab" id="t-feitos" aria-controls="tab-feitos" aria-selected="false">O que já fiz</button>
     <button type="button" role="tab" id="t-custo" aria-controls="tab-custo" aria-selected="true">Custo</button>
     <button type="button" role="tab" id="t-cotacoes" aria-controls="tab-cotacoes" aria-selected="false">Cotações</button>
+    <button type="button" role="tab" id="t-fila" aria-controls="tab-fila" aria-selected="false">Fila</button>
     <button type="button" role="tab" id="t-pedidos" aria-controls="tab-pedidos" aria-selected="false">Pedidos</button>
     <button type="button" role="tab" id="t-estoque" aria-controls="tab-estoque" aria-selected="false">Estoque</button>
-    <button type="button" role="tab" id="t-vendas" aria-controls="tab-vendas" aria-selected="false">Vendas</button>
+    <button type="button" role="tab" id="t-receber" aria-controls="tab-receber" aria-selected="false">A receber</button>
+    <button type="button" role="tab" id="t-vendas" aria-controls="tab-vendas" aria-selected="false">Resumo</button>
   </nav>
+
+  <div id="tab-sugestoes" role="tabpanel" aria-labelledby="t-sugestoes" class="panel" hidden>
+    <div class="ola"><b>Como podemos desenrolar o dia hoje? Eu te ajudo!</b><span>Sugestões, não obrigações. Escolha por onde ir.</span></div>
+    <div id="sg" class="sg"></div>
+  </div>
+
+  <div id="tab-feitos" role="tabpanel" aria-labelledby="t-feitos" class="panel" hidden>
+    <div class="feito-top" id="ft-top"></div>
+    <div id="ft-lista" class="linha"></div>
+    <p class="hint center" id="ft-hist"></p>
+  </div>
+
+  <div id="tab-fila" role="tabpanel" aria-labelledby="t-fila" class="panel" hidden>
+    <section id="fila-box" aria-labelledby="h-fila" hidden>
+      <h2 id="h-fila">Fila das impressoras</h2>
+      <p class="hint">Pedidos de clientes por ordem de prazo. Use ↑ para passar um pedido na frente: o app avisa se outro atrasar. Peças próprias ficam no fim e não atrasam ninguém.</p>
+      <div id="fila" class="lista"></div>
+    </section>
+  </div>
+
+  <div id="tab-receber" role="tabpanel" aria-labelledby="t-receber" class="panel" hidden>
+    <section id="v-rec-box" hidden>
+      <div class="shead"><h2>Contas a receber</h2><b id="v-rec-tot" style="font:500 16px var(--f-num);color:var(--warn)"></b></div>
+      <p class="hint">Todos os pedidos com valor faltando, de qualquer mês.</p>
+      <div id="v-rec" class="lista"></div>
+    </section>
+    <div class="empty" id="rec-vazio">Nada a receber. Todos os pedidos estão pagos.</div>
+  </div>
 
   <div id="tab-custo" role="tabpanel" aria-labelledby="t-custo" class="panel">
   <section aria-labelledby="h-cli">
@@ -476,11 +544,6 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <h2 id="h-hoje">Resumo do dia</h2>
       <div id="hoje" class="hj-g"></div>
     </section>
-    <section id="fila-box" aria-labelledby="h-fila" hidden>
-      <h2 id="h-fila">Fila das impressoras</h2>
-      <p class="hint">Pedidos de clientes por ordem de prazo. Use ↑ para passar um pedido na frente: o app avisa se outro atrasar. Peças próprias ficam no fim e não atrasam ninguém.</p>
-      <div id="fila" class="lista"></div>
-    </section>
     <div class="seg" role="group" aria-label="Filtro de pedidos">
       <button type="button" id="p-abertos" aria-pressed="true">Em aberto</button>
       <button type="button" id="p-entregues" aria-pressed="false">Entregues</button>
@@ -555,11 +618,6 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div id="vn-cot" class="lines"></div>
       <div id="vn-cli-box" hidden><h3 class="sub3">Quem recebeu mais desconto</h3><div id="vn-cli" class="lines"></div></div>
       <p class="hint" id="vn-nota"></p>
-    </section>
-    <section id="v-rec-box" hidden>
-      <div class="shead"><h2>Contas a receber</h2><b id="v-rec-tot" style="font:500 16px var(--f-num);color:var(--warn)"></b></div>
-      <p class="hint">Todos os pedidos com valor faltando, de qualquer mês.</p>
-      <div id="v-rec" class="lista"></div>
     </section>
     <section id="v-formas-box" hidden>
       <h2>Dinheiro recebido no período</h2>
@@ -799,6 +857,15 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <span class="side">Tempo <b id="b-tempo"></b></span>
   </div>
 </div>
+
+<nav class="nav-baixo" id="nav-baixo" aria-label="Etapas do trabalho">
+  <div class="in">
+    <button type="button" data-cat="bussola"><i aria-hidden="true">🧭</i>Bússola<em class="badge" id="nb-sg" hidden></em></button>
+    <button type="button" data-cat="vender"><i aria-hidden="true">✎</i>Vender</button>
+    <button type="button" data-cat="produzir"><i aria-hidden="true">⚙</i>Produzir</button>
+    <button type="button" data-cat="receber"><i aria-hidden="true">$</i>Receber</button>
+  </div>
+</nav>
 
 <div class="sheet" id="demo" hidden role="dialog" aria-modal="true" aria-labelledby="d-nome">
   <div class="card">
@@ -1213,20 +1280,36 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   /* ---------- Abas ---------- */
-  var ABAS = ["custo", "cotacoes", "pedidos", "estoque", "vendas"];
+  // Botões de baixo = etapas do trabalho; abas de cima = o que tem dentro de cada etapa, na ordem do processo
+  var CATS = { bussola: ["sugestoes", "feitos"], vender: ["custo", "cotacoes"], produzir: ["fila", "pedidos", "estoque"], receber: ["receber", "vendas"] };
+  var ABAS = [].concat(CATS.bussola, CATS.vender, CATS.produzir, CATS.receber);
+  var ultimaDaCat = {};
+  try { ultimaDaCat = JSON.parse(localStorage.getItem("baksa3d.abasCat") || "{}") || {}; } catch (e) {}
+  function catDe(aba) { for (var c in CATS) if (CATS[c].indexOf(aba) > -1) return c; return "vender"; }
+  function abrirCat(c) { var a = ultimaDaCat[c]; abrirAba(CATS[c].indexOf(a) > -1 ? a : CATS[c][0]); }
   function abrirAba(nome) {
+    var cat = catDe(nome);
+    ultimaDaCat[cat] = nome;
+    try { localStorage.setItem("baksa3d.abasCat", JSON.stringify(ultimaDaCat)); } catch (e) {}
+    document.querySelector(".tabs").style.setProperty("--n", CATS[cat].length);
     ABAS.forEach(function (a) {
+      $("t-" + a).hidden = CATS[cat].indexOf(a) < 0;
       $("t-" + a).setAttribute("aria-selected", a === nome);
       $("tab-" + a).hidden = a !== nome;
     });
+    [].forEach.call($("nav-baixo").querySelectorAll("button"), function (b) { b.setAttribute("aria-current", b.dataset.cat === cat); });
     $("bar").hidden = nome !== "custo";
     document.querySelector(".wrap").classList.toggle("sem-bar", nome !== "custo");
+    // na bússola os avisos já viram sugestões
+    document.querySelector(".wrap").classList.toggle("na-bussola", cat === "bussola");
     try { localStorage.setItem("baksa3d.aba", nome); } catch (e) {}
     if (nome === "cotacoes" && typeof renderCotacoes === "function") renderCotacoes();
     if (typeof renderAlerta === "function") renderAlerta();
+    if (pronto) { pontosNav(); if (cat === "bussola") { renderSugestoes(); renderFeitos(); } }
     window.scrollTo(0, 0);
   }
   ABAS.forEach(function (a) { $("t-" + a).addEventListener("click", function () { abrirAba(a); }); });
+  [].forEach.call($("nav-baixo").querySelectorAll("button"), function (b) { b.addEventListener("click", function () { abrirCat(b.dataset.cat); }); });
   (function () {
     var h = (location.hash || "").slice(1), a = null;
     try { a = localStorage.getItem("baksa3d.aba"); } catch (e) {}
@@ -1799,7 +1882,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       kids.push(el("div", { class: "acts" }, [el("button", { type: "button", text: "+ Peça própria", onclick: function () { abrirPropria(i); } })]));
       box.appendChild(el("div", { class: "item" }, kids));
     });
-    $("fila-box").hidden = verEntregues || !pronto;
+    $("fila-box").hidden = !pronto;
   }
   function abrirPropria(i) {
     $("pr-nome").value = ""; $("pr-imp").value = i; $("pr-h").value = ""; $("pr-m").value = ""; $("pr-erro").textContent = "";
@@ -2163,7 +2246,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       ]));
     });
     $("v-rec-tot").textContent = brl.format(totRec);
-    $("v-rec-box").hidden = !devendo.length;
+    $("v-rec-box").hidden = !devendo.length; $("rec-vazio").hidden = !!devendo.length || !pronto;
     var formas = {};
     todos.forEach(function (p) {
       pagamentos(p).forEach(function (x) {
@@ -2863,7 +2946,145 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     r.readAsText(arq);
   });
 
-  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); }
+  /* ---------- Bússola: sugestões do dia (começando pelo fácil) e o que já foi feito ---------- */
+  function sugestoes() {
+    var L = [];
+    function add(o) { L.push(o); }
+    ORDEM_IMPS.forEach(function (i) {
+      var ag = agenda(i), N = IMPS[i].nome;
+      ag.prod.forEach(function (it) {
+        if (it.resto > 0.01) return;
+        add({ g: "facil", tmp: "30 s", txt: (it.tipo === "ped" ? "O nº " + it.x.numero + " (" + (it.x.cliente || "sem cliente") + ")" : "A peça própria " + it.x.nome) + " na " + N + " já deve ter terminado. Marcar como pronto?",
+          btn: "Terminou", acao: function () { statusFila(it, "feito"); } });
+      });
+      if (!ag.prod.length && ag.cli.length) {
+        var c = ag.cli[0];
+        add({ g: "facil", tmp: "30 s", urg: !!c.atraso, valor: 1e6 + (c.x.valorTotal || 0), txt: "A " + N + " está parada e o nº " + c.x.numero + " (" + (c.x.cliente || "sem cliente") + ") está esperando. Que tal começar?",
+          sub: c.x.nome + " × " + c.x.qtd + " · " + hm(c.h) + (c.x.prazo ? " · entrega " + diaBR(Date.UTC(+c.x.prazo.slice(0, 4), c.x.prazo.slice(5, 7) - 1, +c.x.prazo.slice(8, 10), 12)) : ""),
+          btn: "Começar", acao: function () { statusFila(c, "produzindo"); } });
+      } else if (!ag.prod.length && ag.prop.length) {
+        var pp = ag.prop[0];
+        add({ g: "tempo", tmp: "30 s", txt: "A " + N + " está livre. Imprimir a peça própria " + pp.x.nome + "?", sub: hm(pp.h), btn: "Começar", acao: function () { statusFila(pp, "produzindo"); } });
+      } else if (!ag.prod.length) {
+        add({ g: "tempo", leve: true, txt: "A " + N + " está livre e sem nada na fila.", sub: "Bom momento para uma peça própria.", btn: "Fila", acao: function () { abrirAba("fila"); } });
+      }
+      ag.cli.forEach(function (it) {
+        if (!it.atraso) return;
+        add({ g: "rende", urg: true, valor: it.x.valorTotal || 0, tmp: "decidir", txt: "O nº " + it.x.numero + " (" + (it.x.cliente || "sem cliente") + ") vai ficar pronto " + it.atraso + (it.atraso === 1 ? " dia" : " dias") + " depois do prazo.",
+          sub: it.atraso24 ? "Mesmo virando a madrugada atrasa. Vale avisar o cliente ou passar na frente." : "Virando a madrugada dá no prazo (" + diaBR(it.fim24) + ").", btn: "Ver fila", acao: function () { abrirAba("fila"); } });
+      });
+    });
+    var abertos = listaPed().filter(function (p) { return p.status !== "entregue"; });
+    listaPed().filter(function (p) { return p.status === "entregue" && falta(p) > 0.005; }).forEach(function (p) {
+      add({ g: "facil", tmp: "30 s", valor: falta(p), txt: (p.cliente || "O cliente") + " já recebeu o nº " + p.numero + " e faltam " + brl.format(falta(p)) + ". Já recebeu? É só marcar.",
+        sub: "Se ainda não pagou, vale um lembrete.", btn: "Receber", acao: function () { abrirPag(p); } });
+    });
+    var prontos = abertos.filter(function (p) { return p.status === "pronto"; });
+    if (prontos.length) {
+      var tot = prontos.reduce(function (s, p) { return s + (p.valorTotal || 0); }, 0), fal = prontos.reduce(function (s, p) { return s + falta(p); }, 0);
+      add({ g: "rende", valor: tot, urg: prontos.some(function (p) { return p.prazo && diasAte(p.prazo) <= 0; }), tmp: "1 saída",
+        txt: brl.format(tot) + " em peças prontas esperando entrega" + (fal > 0.005 ? ", com " + brl.format(fal) + " para receber" : "") + ".",
+        sub: prontos.map(function (p) { return "nº " + p.numero + " " + (p.cliente || "") + (p.prazo ? " (" + prazoBR(p.prazo).slice(0, 5) + ")" : ""); }).join(" · "), btn: "Ver", acao: function () { abrirAba("pedidos"); } });
+    }
+    abertos.forEach(function (p) {
+      var tc = textoCond(p) || "";
+      if (/vencida/.test(tc)) add({ g: "rende", urg: true, valor: falta(p), tmp: "5 min", txt: "Parcela vencida do nº " + p.numero + " (" + (p.cliente || "sem cliente") + "): faltam " + brl.format(falta(p)) + ".", btn: "Receber", acao: function () { abrirPag(p); } });
+      else if (recebido(p) <= 0 && (p.condicao === "pf" || p.condicao === "avista") && falta(p) > 0.005)
+        add({ g: "rende", valor: falta(p) / 2, tmp: "5 min", txt: "O nº " + p.numero + " (" + (p.cliente || "sem cliente") + ") ainda está sem " + (p.condicao === "avista" ? "o pagamento" : "a entrada") + ".", sub: "Já recebeu? É só marcar. Se não, vale pedir antes de imprimir.", btn: "Receber", acao: function () { abrirPag(p); } });
+    });
+    // filamento: só pesa quando um pedido da fila precisa dele
+    listaFil().forEach(function (f) {
+      var precisam = abertos.filter(function (p) { return (p.status || "fila") === "fila" && p.filamentoId === f.id; });
+      if (f.gramas < 0 && precisam.length) add({ g: "rende", urg: true, tmp: "compra", txt: "O nº " + precisam.map(function (p) { return p.numero; }).join(", nº ") + " precisa de " + [f.tipo, f.cor].filter(Boolean).join(" ") + " e faltam " + kg(-f.gramas) + ".",
+        sub: "Dá para comprar, usar outra marca da mesma cor ou combinar outra cor com o cliente.", btn: "Estoque", acao: function () { abrirAba("estoque"); } });
+      else if (f.gramas < minimo(f)) add({ g: "tempo", leve: true, txt: [f.tipo, f.cor].filter(Boolean).join(" ") + " acabando (" + kg(Math.max(0, f.gramas)) + ")." + (precisam.length ? "" : " Nenhum pedido precisa dele agora."), btn: "Estoque", acao: function () { abrirAba("estoque"); } });
+    });
+    var cots = cotPendentes().filter(function (c) { return diasDesde(c.retorno || c.criado) >= 2; });
+    cots.slice(0, 3).forEach(function (c) {
+      var r = precoCot(c), valor = (r ? r.total : c.valorTotal || 0) + (c.entradas ? parse(c.entradas.frete) : c.frete || 0), link = linkWhats(c, valor), d = diasDesde(c.retorno || c.criado);
+      add({ g: "tempo", leve: true, txt: (c.cliente || "O cliente") + " não respondeu a cotação de " + c.nome + " faz " + d + " dias. Dar um alô?", sub: brl.format(valor),
+        btn: link ? "WhatsApp" : "Ver", href: link, acao: link ? function () { marcarCot(c, { retorno: Date.now() }); } : function () { abrirAba("cotacoes"); } });
+    });
+    if (cots.length > 3) add({ g: "tempo", leve: true, txt: "E mais " + (cots.length - 3) + " cotações esperando resposta.", btn: "Ver", acao: function () { abrirAba("cotacoes"); } });
+    L.forEach(function (s, k) { s.k = k; });
+    return L.sort(function (a, b) { return (b.urg ? 1 : 0) - (a.urg ? 1 : 0) || (b.valor || 0) - (a.valor || 0) || a.k - b.k; });
+  }
+  function renderSugestoes() {
+    if (!pronto) return;
+    var L = sugestoes(), box = $("sg"); box.textContent = "";
+    var n = L.filter(function (s) { return s.g !== "tempo"; }).length;
+    $("nb-sg").hidden = !n; $("nb-sg").textContent = n;
+    [["facil", "Comece pelo fácil"], ["rende", "Depois, o que mais rende"], ["tempo", "Quando sobrar um tempinho"]].forEach(function (gr) {
+      var lista = L.filter(function (s) { return s.g === gr[0]; }); if (!lista.length) return;
+      box.appendChild(el("div", { class: "sg-t", text: gr[1] }));
+      lista.forEach(function (s) {
+        var b = s.href ? el("a", { href: s.href, target: "_blank", rel: "noopener", text: s.btn, onclick: s.acao }) : el("button", { type: "button", text: s.btn, onclick: s.acao });
+        box.appendChild(el("div", { class: "sg-i" + (s.leve ? " leve" : "") + (s.urg ? " urg" : "") }, [
+          el("div", null, [s.txt, s.sub ? el("small", { text: s.sub }) : null]),
+          s.tmp ? el("span", { class: "tmp", text: s.tmp }) : null, b
+        ]));
+      });
+    });
+    if (!L.length) box.appendChild(el("div", { class: "sg-ok" }, [el("b", { text: "Tudo em dia!" }), "As máquinas estão rodando e nada está parado. Bom momento para um café."]));
+  }
+  // O que já foi feito: sai das datas que o app já guarda (começar, terminar, entregar, receber, retornos), sem trabalho extra
+  function feitos() {
+    var L = [];
+    listaPed().forEach(function (p) {
+      var quem = " · " + (p.cliente || "sem cliente");
+      if (p.criado) L.push({ t: p.criado, txt: "Fechou o pedido nº " + p.numero + quem, sub: p.nome + " × " + p.qtd + " · " + brl.format(p.valorTotal || 0), tipo: "venda" });
+      if (p.em_produzindo) L.push({ t: p.em_produzindo, txt: "Começou o nº " + p.numero + " na " + IMPS[impDe(p)].nome, sub: p.nome + " × " + p.qtd, tipo: "imp" });
+      if (p.em_pronto) L.push({ t: p.em_pronto, txt: "Terminou de imprimir o nº " + p.numero + quem, tipo: "pronto" });
+      if (p.em_entregue) L.push({ t: p.em_entregue, txt: "Entregou o nº " + p.numero + quem, tipo: "entrega" });
+      pagamentos(p).forEach(function (x) { if (x.data && x.valor) L.push({ t: x.data, txt: "Recebeu " + brl.format(x.valor) + quem, sub: "nº " + p.numero + (x.forma ? " · " + x.forma : ""), tipo: "rec", valor: x.valor }); });
+    });
+    var vistas = {};
+    Object.keys(cache.cotacoes).forEach(function (k) {
+      var c = cache.cotacoes[k]; if (!c.retorno) return;
+      var chave = chaveCot(c) + "|" + isoDe(c.retorno); if (vistas[chave]) return; vistas[chave] = 1;
+      L.push({ t: c.retorno, txt: (c.orcNumero ? "Mandou o orçamento " + c.orcNumero : "Falou com o cliente") + " · " + (c.cliente || c.nome), sub: c.nome, tipo: "cot" });
+    });
+    Object.keys(cache.fila || {}).forEach(function (k) { var x = cache.fila[k]; if (x.em_produzindo) L.push({ t: x.em_produzindo, txt: "Começou a peça própria " + x.nome + " na " + IMPS[impDe(x)].nome, tipo: "imp" }); });
+    Object.keys(cache.falhas || {}).forEach(function (k) { var x = cache.falhas[k]; L.push({ t: x.data, txt: "Registrou uma falha · " + x.defeito, sub: x.nome, tipo: "falha" }); });
+    return L.sort(function (a, b) { return a.t - b.t; });
+  }
+  function renderFeitos() {
+    if (!pronto) return;
+    var todos = feitos(), hoje = hojeISO();
+    var deHoje = todos.filter(function (x) { return isoDe(x.t) === hoje; });
+    var ontem = todos.filter(function (x) { return diasDesde(x.t) === 1; }).length;
+    var semana = todos.filter(function (x) { return diasDesde(x.t) < 7; }).length;
+    var rec = deHoje.reduce(function (s, x) { return s + (x.valor || 0); }, 0), imp = deHoje.filter(function (x) { return x.tipo === "imp"; }).length;
+    var top = $("ft-top"); top.textContent = "";
+    top.appendChild(el("b", { text: deHoje.length ? deHoje.length + (deHoje.length === 1 ? " coisa desenrolada hoje" : " coisas desenroladas hoje") : "O dia está começando" }));
+    var partes = [];
+    if (rec > 0) partes.push(brl.format(rec) + " recebidos");
+    if (imp) partes.push(imp + (imp === 1 ? " impressão começada" : " impressões começadas"));
+    top.appendChild(el("span", { text: partes.length ? partes.join(" · ") : deHoje.length ? "Bom ritmo!" : "Cada coisa que você marcar no app aparece aqui." }));
+    var box = $("ft-lista"); box.textContent = "";
+    box.hidden = !deHoje.length;
+    deHoje.forEach(function (x) {
+      box.appendChild(el("div", { class: "st" }, [
+        el("span", { class: "c", "aria-hidden": "true", text: "✓" }),
+        el("div", null, [x.txt, x.sub ? el("small", { text: x.sub }) : null]),
+        el("span", { class: "hr", text: new Date(x.t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) })
+      ]));
+    });
+    $("t-feitos").textContent = "O que já fiz" + (deHoje.length ? " · " + deHoje.length : "");
+    $("ft-hist").textContent = "Ontem: " + ontem + (ontem === 1 ? " coisa" : " coisas") + " · Últimos 7 dias: " + semana;
+  }
+  // Ponto vermelho no botão de baixo quando alguma aba daquela etapa tem aviso
+  function pontosNav() {
+    [].forEach.call($("nav-baixo").querySelectorAll("button"), function (b) {
+      var tem = CATS[b.dataset.cat].some(function (a) { return $("t-" + a).querySelector(".ponto"); });
+      var p = b.querySelector(".ponto");
+      if (tem && !p) b.appendChild(el("span", { class: "ponto", "aria-label": "avisos" }));
+      if (!tem && p) p.remove();
+    });
+  }
+  setInterval(function () { if (!document.hidden) { renderSugestoes(); renderFeitos(); } }, 60000);
+
+  function renderTudo() { if (!$("sh-cat").hidden) renderCatalogo(); if (!$("sh-pag").hidden) renderPag(false); renderSelect(); renderEstoque(); renderCotacoes(); renderPedidos(); renderAlerta(); renderVendas(); renderImpFila(); renderSugestoes(); renderFeitos(); pontosNav(); }
   renderTudo();
   iniciarDados();
 })();
