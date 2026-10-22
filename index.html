@@ -106,7 +106,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .demo-btn { grid-row: span 2; align-self: center; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font: 600 13px var(--f-body); padding: 12px 12px; cursor: pointer; }
 .inp input.txt { font: 500 16px var(--f-body); }
 .sheet { position: fixed; inset: 0; z-index: 20; background: rgba(20,15,12,.55); display: flex; align-items: flex-end; justify-content: center; padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-.sheet .card { width: 100%; max-width: 480px; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 20px; display: grid; gap: 16px; border-top: 6px solid var(--accent); }
+.sheet .card { width: 100%; max-width: 480px; grid-template-columns: minmax(0, 1fr); background: var(--surface); color: var(--ink); border-radius: 14px; padding: 20px; display: grid; gap: 16px; border-top: 6px solid var(--accent); }
 .d-top { display: flex; justify-content: space-between; align-items: baseline; }
 .k2 { font-family: var(--f-display); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--muted); display: block; }
 .d-data { font: 500 12px var(--f-num); color: var(--muted); }
@@ -553,7 +553,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <button type="button" class="big-btn sec" id="salvar-cot">Salvar cotação</button>
       <button type="button" class="big-btn" id="abrir-venda">Registrar venda</button>
     </div>
-    <button type="button" class="big-btn sec" id="orc-custo">Orçamento em PDF para o cliente</button>
+    <button type="button" class="big-btn sec" id="orc-custo">Orçamento para o cliente (PDF + WhatsApp)</button>
   </section>
 
   <section>
@@ -923,7 +923,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 <div class="sheet" id="sh-orc" hidden role="dialog" aria-modal="true" aria-labelledby="or-titulo">
   <form class="card" id="or-form" novalidate>
     <h3 id="or-titulo">Orçamento em PDF</h3>
-    <p class="hint">Mesmo modelo da planilha de orçamento. Escolha a marca, confira e toque em Gerar: o PDF abre para enviar no WhatsApp.</p>
+    <p class="hint">Mesmo modelo da planilha de orçamento. Escolha a marca, confira e toque em Enviar no WhatsApp: o PDF e a mensagem vão juntos, é só escolher o contato.</p>
     <div class="field"><label for="or-marca">Marca do orçamento</label><div class="selwrap"><select id="or-marca">
       <option value="ambas">Baksa 3D + Baksa Display Systems (os dois logos)</option><option value="b3d">Baksa 3D</option><option value="bds">Baksa Display Systems</option></select></div></div>
     <div class="row2">
@@ -951,9 +951,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="field"><label for="or-cond">Condição de pagamento (nós definimos)</label><div class="selwrap"><select id="or-cond"><option value="pf">PF: 50% de entrada + saldo na entrega</option><option value="avista">À vista antecipado</option><option value="pj">PJ: 3x (entrada / 21 DD / 42 DD)</option></select></div></div>
     <div class="field"><label for="or-pag">Forma de pagamento</label><textarea id="or-pag" rows="3"></textarea></div>
     <div class="lines"><div class="ln total"><span>Total do orçamento</span><span id="or-total"></span></div></div>
+    <div class="field"><label for="or-msg">Mensagem do WhatsApp (vai junto com o PDF)</label><textarea id="or-msg" rows="9"></textarea>
+      <p class="hint">Pode mexer à vontade antes de enviar.</p></div>
     <p class="hint err" id="or-erro" aria-live="polite"></p>
     <div class="d-acoes">
-      <button type="submit" class="primary" id="or-ok">Gerar PDF</button>
+      <button type="submit" class="primary" id="or-ok" style="grid-column:1/-1">Enviar no WhatsApp</button>
+      <button type="button" id="or-so-pdf">Só gerar o PDF</button>
       <button type="button" id="or-cancelar">Cancelar</button>
     </div>
   </form>
@@ -2905,6 +2908,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var docNum = (o.doc || "").replace(/\D/g, "");
     $("or-cond").value = CONDICOES[o.cond] ? o.cond : docNum.length === 14 ? "pj" : "pf";
     $("or-pag").value = o.pagamento || "";
+    $("or-msg").value = ""; msgAuto = "";
     $("or-erro").textContent = "";
     prazoOrc(o.prazo || "");
     totalOrc();
@@ -2930,12 +2934,29 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var C = CONDICOES[cond] || CONDICOES.pj;
     return C.texto(total) + "\nChave Pix: 47-99196-4555\nBanco: C6";
   }
+  // Texto que vai junto com o PDF no WhatsApp; acompanha o formulário enquanto ninguém mexer nele
+  var COND_MSG = { pf: "50% de entrada + saldo na entrega", avista: "à vista antecipado", pj: "3x (entrada, 21 e 42 dias)" };
+  var msgAuto = "";
+  function textoMsg() {
+    var c = cache.cotacoes[orcBase] || {}, cd = cadDe(c) || {}, itens = itensOrc(), frete = parse($("or-frete").value);
+    var total = itens.reduce(function (s, i) { return s + i.v.total; }, 0) + frete, pz = $("or-prazo").value;
+    var nome = cd.apelido || String($("or-contato").value || (!$("or-emp").value || $("or-emp").value === c.cliente ? c.cliente || "" : "")).trim().split(" ")[0];
+    return (nome ? "Oi " + nome + "! Tudo bem?" : "Olá! Tudo bem?") + " Segue o orçamento " + ($("or-num").value.trim() || "") + " da Baksa 3D:\n" +
+      itens.map(function (i) { return "• " + i.c.nome + " × " + i.c.qtd; }).join("\n") +
+      "\n• Total: " + brl.format(total) + (frete > 0 ? " (frete " + brl.format(frete) + " incluso)" : "") +
+      (pz ? "\n• Entrega: até " + pz.slice(8, 10) + "/" + pz.slice(5, 7) : "") +
+      "\n• Pagamento: " + (COND_MSG[$("or-cond").value] || "") +
+      "\nO PDF com os detalhes vai junto. Qualquer dúvida, estou à disposição!";
+  }
+  function atualizarMsg() { if (!$("or-msg").value || $("or-msg").value === msgAuto) { msgAuto = textoMsg(); $("or-msg").value = msgAuto; } }
+  ["or-prazo", "or-contato", "or-emp", "or-num"].forEach(function (id) { $(id).addEventListener("input", atualizarMsg); $(id).addEventListener("change", atualizarMsg); });
   var pagAuto = "";
   function totalOrc() {
     var sub = itensOrc().reduce(function (s, i) { return s + i.v.total; }, 0), total = sub + parse($("or-frete").value);
     $("or-total").textContent = brl.format(total);
     // o texto de pagamento acompanha o total enquanto ninguém mexer nele
     if (!$("or-pag").value || $("or-pag").value === pagAuto) { pagAuto = textoPagamento(total, $("or-cond").value); $("or-pag").value = pagAuto; }
+    atualizarMsg();
     return total;
   }
   $("or-frete").addEventListener("input", totalOrc);
@@ -3017,13 +3038,16 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     doc.setFillColor(244, 229, 220); doc.rect(X, y + 5, W, 4, "F");
     return doc;
   }
+  var soPdf = false;
+  $("or-so-pdf").addEventListener("click", function () { soPdf = true; $("or-form").requestSubmit ? $("or-form").requestSubmit() : $("or-ok").click(); });
   $("or-form").addEventListener("submit", function (e) {
     e.preventDefault();
+    var envia = !soPdf; soPdf = false;
     var itens = itensOrc(), c = cache.cotacoes[orcBase];
     if (!c || !itens.length) { $("or-erro").textContent = "Escolha pelo menos um item."; return; }
     if (!window.jspdf) {
-      $("or-erro").textContent = "Preparando o gerador de PDF… toque em Gerar de novo em alguns segundos.";
-      carregarJsPDF().then(function () { $("or-erro").textContent = "Pronto. Toque em Gerar PDF."; }, function () { $("or-erro").textContent = "Sem internet para preparar o PDF. Tente de novo com conexão."; });
+      $("or-erro").textContent = "Preparando o gerador de PDF… toque no botão de novo em alguns segundos.";
+      carregarJsPDF().then(function () { $("or-erro").textContent = "Pronto. Pode tocar no botão."; }, function () { $("or-erro").textContent = "Sem internet para preparar o PDF. Tente de novo com conexão."; });
       return;
     }
     var sub = itens.reduce(function (s, i) { return s + i.v.total; }, 0), frete = parse($("or-frete").value);
@@ -3035,19 +3059,24 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var pdf = montarPDF(d), nomeArq = "Orcamento_" + d.numero + (d.empresa ? " - " + d.empresa.replace(/[\\/:*?"<>|]/g, "") : "") + ".pdf";
     var blob = pdf.output("blob"), arq = null;
     try { arq = new File([blob], nomeArq, { type: "application/pdf" }); } catch (x) {}
-    // compartilhar abre o WhatsApp e outros apps; sem isso, baixa o arquivo
+    var msg = $("or-msg").value.trim();
+    // o texto também vai para a área de transferência: se o app não levar a legenda, é só colar
+    if (envia && msg) try { navigator.clipboard.writeText(msg).catch(function () {}); } catch (x) {}
+    // compartilhar abre o WhatsApp e outros apps com o PDF; sem isso, baixa o arquivo (e abre a conversa com o texto)
     if (arq && navigator.canShare && navigator.canShare({ files: [arq] })) {
-      navigator.share({ files: [arq], title: "Orçamento " + d.numero }).catch(function () {});
+      var dados = { files: [arq], title: "Orçamento " + d.numero }; if (envia && msg) dados.text = msg;
+      navigator.share(dados).catch(function () {});
     } else {
       var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nomeArq;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      var wl = envia && waLink(d.telefone || c.whatsapp || c.telefone, msg); if (wl) window.open(wl, "_blank", "noopener");
     }
     var desc = {}; itens.forEach(function (i) { desc[i.c.id] = i.desc; });
     var orc = { marca: d.marca, data: d.data, empresa: d.empresa, contato: d.contato, doc: d.doc, cidade: d.cidade, telefone: d.telefone, envio: d.envio,
       frete: frete, prazo: d.prazo, cond: d.cond, pagamento: d.pagamento === textoPagamento(d.total, d.cond) ? "" : d.pagamento, itens: itens.map(function (i) { return i.c.id; }), desc: desc };
-    gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orcHist: (c.orcHist || []).concat([d.numero]), orc: orc, retorno: Date.now() }));
+    gravar("cotacoes", c.id, Object.assign({}, c, { orcNumero: d.numero, orcHist: (c.orcHist || []).concat([d.numero]), orc: orc, retorno: Date.now() }, envia ? { enviado: Date.now() } : {}));
     itens.forEach(function (i) { if (i.c.id !== c.id) gravar("cotacoes", i.c.id, Object.assign({}, i.c, { orcNumero: d.numero })); });
-    fecharSheet("sh-orc"); toast("Orçamento " + d.numero + " gerado.");
+    fecharSheet("sh-orc"); toast(envia ? "Orçamento " + d.numero + " pronto para enviar. O texto também foi copiado." : "Orçamento " + d.numero + " gerado.");
   });
 
   /* ---------- Catálogo de peças salvas ---------- */

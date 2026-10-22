@@ -1,5 +1,5 @@
 // Funciona sem internet: guarda o app no celular e atualiza quando houver conexão.
-const CACHE = "baksa3d-v32";
+const CACHE = "baksa3d-v33";
 const ARQUIVOS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS))); self.skipWaiting(); });
 self.addEventListener("activate", e => {
