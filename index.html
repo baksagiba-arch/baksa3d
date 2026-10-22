@@ -570,6 +570,16 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <h2>Peças mais vendidas</h2>
       <div id="v-top" class="rank"></div>
     </section>
+    <section id="v-falhas-box" hidden>
+      <div class="shead"><h2>Falhas e perdas</h2><b id="vf-tot" style="font:500 16px var(--f-num);color:var(--warn)"></b></div>
+      <p class="hint" id="vf-resumo"></p>
+      <h3 class="sub3">Defeitos que mais aconteceram</h3>
+      <div id="vf-tipos" class="lines"></div>
+      <h3 class="sub3">Por impressora</h3>
+      <div id="vf-imps" class="lines"></div>
+      <h3 class="sub3">Falhas registradas</h3>
+      <div id="vf-lista" class="lista"></div>
+    </section>
     <section id="v-cores-box" hidden>
       <h2>Consumo por filamento</h2>
       <div id="v-cores" class="lines"></div>
@@ -683,6 +693,30 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="d-acoes">
       <button type="submit" class="primary">Pôr na fila</button>
       <button type="button" id="pr-cancelar">Cancelar</button>
+    </div>
+  </form>
+</div>
+
+<div class="sheet" id="sh-falha" hidden role="dialog" aria-modal="true" aria-labelledby="fl-titulo">
+  <form class="card" id="fl-form" novalidate>
+    <h3 id="fl-titulo">Impressão falhou</h3>
+    <p class="hint" id="fl-sub"></p>
+    <div class="field"><label for="fl-def">Defeito</label><div class="selwrap"><select id="fl-def"></select></div></div>
+    <div class="field"><label for="fl-obs">Detalhes (opcional)</label><div class="inp"><input id="fl-obs" class="txt" autocomplete="off" placeholder="Ex.: canto esquerdo da mesa, PETG"></div></div>
+    <div class="field"><label for="fl-g">Filamento perdido</label><div class="inp"><input id="fl-g" inputmode="decimal"><span class="u">g</span></div>
+      <p class="hint">Mesa inteira, só algumas peças ou o que saiu até parar: informe o que foi para o lixo.</p></div>
+    <div class="row2">
+      <div class="field"><label for="fl-h">Tempo perdido</label><div class="inp"><input id="fl-h" inputmode="numeric"><span class="u">h</span></div></div>
+      <div class="field"><label for="fl-m">&nbsp;</label><div class="inp"><input id="fl-m" inputmode="numeric" aria-label="Minutos"><span class="u">min</span></div></div>
+    </div>
+    <div class="field"><label for="fl-fil">Filamento</label><div class="selwrap"><select id="fl-fil"></select></div></div>
+    <label class="check"><input type="checkbox" id="fl-baixa" checked> Descontar do estoque o filamento perdido</label>
+    <label class="check"><input type="checkbox" id="fl-volta" checked> Voltar para o começo da fila para reimprimir</label>
+    <p class="hint" id="fl-custo"></p>
+    <p class="hint err" id="fl-erro" aria-live="polite"></p>
+    <div class="d-acoes">
+      <button type="submit" class="primary">Registrar falha</button>
+      <button type="button" id="fl-cancelar">Cancelar</button>
     </div>
   </form>
 </div>
@@ -1082,8 +1116,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   calcular();
 
   /* ---------- Armazenamento: banco do app (compartilhado) ou, fora dele, este aparelho ---------- */
-  var COLS = ["filamentos", "pedidos", "cotacoes", "catalogo", "fila"];
-  var cache = { filamentos: {}, pedidos: {}, cotacoes: {}, catalogo: {}, fila: {} };
+  var COLS = ["filamentos", "pedidos", "cotacoes", "catalogo", "fila", "falhas"];
+  var cache = { filamentos: {}, pedidos: {}, cotacoes: {}, catalogo: {}, fila: {}, falhas: {} };
   var pronto = false, modoDados = "carregando", db = null;
   function lsGet(c) { try { return JSON.parse(localStorage.getItem("baksa3d." + c) || "{}"); } catch (e) { return {}; } }
   function lsSet(c) { try { localStorage.setItem("baksa3d." + c, JSON.stringify(cache[c])); } catch (e) {} }
@@ -1220,11 +1254,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function porKg(f) { return f.pesoCarretel > 0 ? f.valorCarretel / f.pesoCarretel * 1000 : 0; }
   function abrirSheet(id) { $(id).hidden = false; }
   function fecharSheet(id) { $(id).hidden = true; }
-  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop"].forEach(function (id) {
+  ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) fecharSheet(id); });
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop"].forEach(fecharSheet);
+    if (e.key === "Escape") ["sh-fil", "sh-venda", "sh-conf", "sh-cat", "sh-pag", "sh-foto", "sh-cli", "sh-orc", "sh-prop", "sh-falha"].forEach(fecharSheet);
   });
 
   // confirmação dentro da página (o app não usa janelas do navegador)
@@ -1729,11 +1763,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         el("b", { text: (imprimindo ? "▶ " : n + ". ") + titulo }),
         el("div", { class: "meta", text: info }),
         pz ? el("div", { class: "meta", text: pz }) : null,
+        p.falhas ? el("div", { class: "meta warn", text: "Reimpressão · já falhou " + p.falhas + (p.falhas === 1 ? " vez" : " vezes") }) : null,
         aviso ? el("div", { class: "meta warn", text: aviso }) : null,
         el("div", { class: "acts fila-acts" }, [
           !imprimindo && lista.indexOf(it) > 0 ? el("button", { type: "button", "aria-label": "Passar na frente", text: "↑", onclick: function () { moverFila(it, lista, -1); } }) : null,
           !imprimindo && lista.indexOf(it) < lista.length - 1 ? el("button", { type: "button", "aria-label": "Passar para trás", text: "↓", onclick: function () { moverFila(it, lista, 1); } }) : null,
           el("button", { type: "button", class: "go", text: imprimindo ? "Terminou" : "Começar", onclick: function () { statusFila(it, imprimindo ? "feito" : "produzindo"); } }),
+          imprimindo ? el("button", { type: "button", class: "del", text: "Falhou", onclick: function () { abrirFalha(it); } }) : null,
           el("button", { type: "button", text: "→ " + outra, onclick: function () { trocarImp(it); } })
         ])
       ])
@@ -1778,6 +1814,121 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     gravar("fila", novoId(), { nome: $("pr-nome").value.trim(), impressora: $("pr-imp").value, horas: Math.round(h * 100) / 100, criado: Date.now(), status: "fila" })
       .then(function () { fecharSheet("sh-prop"); toast("Peça própria na fila da " + IMPS[$("pr-imp").value].nome + "."); });
   });
+
+  /* ---------- Registro de falhas: o que se perde de verdade, para ajustar o desperdício ---------- */
+  var DEFEITOS = ["Descolou da mesa (warping)", "Espaguete (soltou no meio)", "Entupiu o bico", "Filamento acabou ou enroscou",
+    "Falha no AMS (troca de cor)", "Camadas deslocadas", "Suporte falhou ou peça caiu", "Fios e teias (stringing)",
+    "Medida errada ou não encaixou", "Erro no fatiamento ou no modelo", "Queda de energia", "Acabamento ruim", "Outro"];
+  var falhaItem = null;
+  (function () { var sel = $("fl-def"); DEFEITOS.forEach(function (d) { sel.appendChild(el("option", { value: d, text: d })); }); })();
+  // Custo do que foi perdido: filamento + energia e depreciação da impressora nas horas perdidas
+  function custoFalha(g, h, filId, i) {
+    var f = filId && cache.filamentos[filId], I = IMPS[i] || IMPS.p1s;
+    var kgPreco = f ? porKg(f) : parse($("filamento").value);
+    return g * kgPreco / 1000 + h * (parse($(I.pot).value) * parse($("kwh").value) + parse($(I.dep).value));
+  }
+  function custoFalhaForm() {
+    var g = parse($("fl-g").value), h = parse($("fl-h").value) + parse($("fl-m").value) / 60;
+    var c = custoFalha(g, h, $("fl-fil").value, impDe(falhaItem.x));
+    $("fl-custo").textContent = "Prejuízo desta falha: " + brl.format(c) + " (filamento e máquina, sem margem).";
+    return c;
+  }
+  function abrirFalha(it) {
+    falhaItem = it;
+    var p = it.x, ped = it.tipo === "ped", gasto = Math.min(it.h, Math.max(0, (Date.now() - (p.em_produzindo || Date.now())) / 36e5));
+    $("fl-sub").textContent = (ped ? "Pedido nº " + p.numero + " · " + (p.cliente || "Sem cliente") + " · " + p.nome + " × " + p.qtd : "Peça própria · " + p.nome) + " · " + IMPS[impDe(p)].nome;
+    $("fl-def").value = DEFEITOS[0]; $("fl-obs").value = "";
+    // começa supondo a mesa inteira perdida e o tempo que já passou imprimindo
+    $("fl-g").value = ped && p.pesoTotal ? numN.format(Math.round(p.pesoTotal)) : "";
+    var tt = Math.round(gasto * 60); $("fl-h").value = Math.floor(tt / 60); $("fl-m").value = tt % 60;
+    var sel = $("fl-fil"); sel.textContent = "";
+    sel.appendChild(el("option", { value: "", text: "Não descontar de nenhum carretel" }));
+    listaFil().forEach(function (f) { sel.appendChild(el("option", { value: f.id, text: filLabel(f) + " · " + kg(f.gramas) })); });
+    sel.value = p.filamentoId && cache.filamentos[p.filamentoId] ? p.filamentoId : "";
+    $("fl-baixa").checked = !!sel.value; $("fl-volta").checked = true; $("fl-erro").textContent = "";
+    custoFalhaForm();
+    abrirSheet("sh-falha");
+  }
+  ["fl-g", "fl-h", "fl-m"].forEach(function (id) { $(id).addEventListener("input", custoFalhaForm); });
+  $("fl-fil").addEventListener("change", function () { $("fl-baixa").checked = !!this.value; custoFalhaForm(); });
+  $("fl-cancelar").addEventListener("click", function () { fecharSheet("sh-falha"); });
+  $("fl-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var it = falhaItem; if (!it) return;
+    var p = it.x, ped = it.tipo === "ped", i = impDe(p);
+    var g = Math.max(0, parse($("fl-g").value)), h = parse($("fl-h").value) + parse($("fl-m").value) / 60;
+    if (!(g > 0) && !(h > 0)) { $("fl-erro").textContent = "Informe quanto filamento ou quanto tempo foi perdido."; return; }
+    var f = $("fl-fil").value && cache.filamentos[$("fl-fil").value];
+    var reg = { data: Date.now(), impressora: i, defeito: $("fl-def").value, obs: $("fl-obs").value.trim(),
+      gramas: Math.round(g), horas: Math.round(h * 100) / 100, custo: centavos(custoFalha(g, h, f ? f.id : "", i)),
+      filamentoId: f ? f.id : "", filamento: f ? filLabel(f) : "", hex: f ? f.hex || "" : "",
+      pedidoId: ped ? p.id : "", numero: ped ? p.numero : 0, cliente: ped ? p.cliente || "" : "", nome: p.nome, propria: !ped };
+    var ps = [gravar("falhas", novoId(), reg)];
+    if (f && $("fl-baixa").checked) ps.push(gravar("filamentos", f.id, Object.assign({}, f, { gramas: Math.round(f.gramas - g) })));
+    if ($("fl-volta").checked) {
+      // volta para o começo da sua parte da fila (pedidos na frente dos pedidos, peça própria na frente das próprias)
+      var ag = agenda(i), grupo = ped ? ag.cli : ag.prop, topo = grupo.length ? chaveFila(grupo[0].x) - 1 : null;
+      var novo = Object.assign({}, p, { status: "fila", falhas: (p.falhas || 0) + 1 }); delete novo.em_produzindo;
+      if (topo != null) novo.filaPos = topo;
+      ps.push(gravar(ped ? "pedidos" : "fila", p.id, novo));
+    }
+    Promise.all(ps).then(function () {
+      fecharSheet("sh-falha");
+      toast("Falha registrada (" + brl.format(reg.custo) + " perdidos)" + ($("fl-volta").checked ? ". Voltou para o começo da fila." : "."));
+    }).catch(function () {});
+  });
+  function renderFalhas(pedidos, atual) {
+    var todas = Object.keys(cache.falhas || {}).map(function (k) { return cache.falhas[k]; })
+      .filter(function (x) { return atual === "todos" || chaveMes(x.data) === atual; })
+      .sort(function (a, b) { return b.data - a.data; });
+    $("v-falhas-box").hidden = !todas.length;
+    if (!todas.length) return;
+    var custo = 0, g = 0, h = 0, tipos = {}, imps = {};
+    todas.forEach(function (x) {
+      custo += x.custo || 0; g += x.gramas || 0; h += x.horas || 0;
+      tipos[x.defeito] = tipos[x.defeito] || { n: 0, c: 0 }; tipos[x.defeito].n++; tipos[x.defeito].c += x.custo || 0;
+      var k = IMPS[x.impressora] ? x.impressora : "p1s"; imps[k] = imps[k] || { n: 0, c: 0, h: 0 }; imps[k].n++; imps[k].c += x.custo || 0; imps[k].h += x.horas || 0;
+    });
+    // perdas comparadas com o custo de produção dos pedidos do mesmo período
+    var prod = pedidos.reduce(function (s, p) { return s + (p.custo || 0); }, 0);
+    var pct = prod > 0 ? Math.round(custo / prod * 1000) / 10 : null;
+    // quanto os clientes pagaram de "desperdícios e perdas" (parte do preço das peças; a caixa entra sem desperdício, aqui é aproximado)
+    var cobrado = pedidos.reduce(function (s, p) { var d = p.desperdicio != null ? p.desperdicio : DESP_PADRAO; return s + (p.valorPecas || 0) * d / (100 + d); }, 0);
+    $("vf-tot").textContent = "−" + brl.format(custo);
+    $("vf-resumo").textContent = todas.length + (todas.length === 1 ? " falha" : " falhas") + " · " + kg(g) + " de filamento · " + hm(h) + " de máquina parada" +
+      (pct != null ? " · " + numN.format(pct) + "% do custo de produção dos pedidos. " : ". ") +
+      (pedidos.length ? "O desperdício cobrado nos pedidos do período somou cerca de " + brl.format(cobrado) + (custo > cobrado ? ": as perdas passaram disso, vale subir o desperdício." : ", então cobriu as perdas.") : "Ainda não há pedidos no período para comparar com o desperdício cobrado.");
+    $("vf-resumo").className = "hint" + (pedidos.length && custo > cobrado ? " warn" : "");
+    var tb = $("vf-tipos"); tb.textContent = "";
+    Object.keys(tipos).sort(function (a, b) { return tipos[b].n - tipos[a].n || tipos[b].c - tipos[a].c; }).forEach(function (k) {
+      tb.appendChild(el("div", { class: "ln" }, [el("span", { text: k + " · " + tipos[k].n + "×" }), el("span", { text: brl.format(tipos[k].c) })]));
+    });
+    var ib = $("vf-imps"); ib.textContent = "";
+    ORDEM_IMPS.forEach(function (k) {
+      if (!imps[k]) return;
+      ib.appendChild(el("div", { class: "ln" }, [el("span", { text: IMPS[k].nome + " · " + imps[k].n + (imps[k].n === 1 ? " falha" : " falhas") + " · " + hm(imps[k].h) }), el("span", { text: brl.format(imps[k].c) })]));
+    });
+    var lb = $("vf-lista"); lb.textContent = "";
+    todas.slice(0, 30).forEach(function (x) {
+      lb.appendChild(el("div", { class: "item" }, [
+        el("div", { class: "top" }, [
+          x.hex ? el("span", { class: "spool", style: "--sw:" + x.hex, "aria-hidden": "true" }) : null,
+          el("div", null, [
+            el("h4", { text: x.defeito }),
+            el("div", { class: "meta", text: dataBR(x.data) + " · " + (IMPS[x.impressora] ? IMPS[x.impressora].nome : "P1S") + " · " + (x.propria ? "peça própria " + x.nome : "nº " + x.numero + " · " + (x.cliente || "Sem cliente") + " · " + x.nome) }),
+            el("div", { class: "meta", text: kg(x.gramas || 0) + " · " + hm(x.horas || 0) + (x.filamento ? " · " + x.filamento : "") }),
+            x.obs ? el("div", { class: "meta", text: x.obs }) : null
+          ]),
+          el("div", { class: "val", text: brl.format(x.custo || 0) })
+        ]),
+        el("div", { class: "acts" }, [el("button", { type: "button", class: "del", text: "Apagar registro", onclick: function () {
+          confirmar("Apagar este registro de falha?", x.defeito + " · " + brl.format(x.custo || 0) + ". O filamento descontado não volta para o estoque.", [
+            { texto: "Apagar", classe: "danger", acao: function () { apagar("falhas", x.id).then(function () { toast("Registro apagado."); }); } }
+          ]);
+        } })])
+      ]));
+    });
+  }
 
   /* ---------- Editar os dados do cliente depois (pedido ou cotação) ---------- */
   var cliEditando = null; // { col, id }
@@ -1993,6 +2144,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     });
     $("v-cores-box").hidden = !lista.length;
     renderGrafico(todos, atual);
+    renderFalhas(lista, atual);
     renderNegociacoes(lista, atual);
     var devendo = todos.filter(function (p) { return falta(p) > 0; }), totRec = 0, rbox = $("v-rec"); rbox.textContent = "";
     devendo.forEach(function (p) {
