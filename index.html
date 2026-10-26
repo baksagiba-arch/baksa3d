@@ -1405,7 +1405,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   /* ---------- Planilha do Google (versão sem login): todos os aparelhos veem os mesmos dados ---------- */
-  var PLANILHA = "https://script.google.com/macros/s/AKfycbxkGTwqvaB7Z2Zm7jI7CkQSM2i5O37DnLxiPz2m9Ap3uS76usczD4fIh9xkV9B2j9tW/exec";
+  var PLANILHA = "https://script.google.com/macros/s/AKfycbw13WkpABgs4JjMB-n9eVbtUgUgUs-7Znq9Aa_wMNLwCHB8kKaylY22TZ2f8WlsRky3/exec";
   // Fila de envio: o que não salvou fica guardado no aparelho e o app tenta de novo sozinho
   var pendentes = 0, filaEnvio = [], motivoEnvio = "", falhouEnvio = false, avisoEnvio = 0, timerEnvio = null;
   try { filaEnvio = JSON.parse(localStorage.getItem("baksa3d.filaEnvio") || "[]") || []; } catch (e) {}
