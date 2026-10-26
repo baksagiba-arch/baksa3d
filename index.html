@@ -140,6 +140,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .chips.peq button { padding: 5px 11px; font: 500 13px var(--f-body); }
 .chips button .n { opacity: .7; margin-left: 4px; }
 .chips button.auto { border-style: dashed; }
+.chips.opc { margin-top: 8px; }
+.chips.opc .bol { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line); }
 .nome-sug { display: grid; gap: 6px; }
 .nome-sug button { display: flex; gap: 8px; align-items: center; text-align: left; border: 1px dashed var(--accent); background: transparent; color: var(--ink); border-radius: 10px; padding: 8px 10px; font: 500 14px var(--f-body); cursor: pointer; min-width: 0; }
 .nome-sug button b { color: var(--accent); white-space: nowrap; margin-left: auto; }
@@ -763,13 +765,14 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 <div class="sheet" id="sh-fil" hidden role="dialog" aria-modal="true" aria-labelledby="f-titulo">
   <form class="card" id="f-form" novalidate>
     <h3 id="f-titulo">Novo filamento</h3>
-    <div class="row2">
-      <div class="field"><label for="f-marca">Marca</label><div class="inp"><input id="f-marca" class="txt" autocomplete="off" placeholder="Ex.: Voolt3D"></div></div>
-      <div class="field"><label for="f-tipo">Tipo</label><div class="inp"><input id="f-tipo" class="txt" autocomplete="off" placeholder="PLA, PETG…" list="tipos"></div></div>
-    </div>
-    <datalist id="tipos"><option value="PLA"><option value="PETG"><option value="ABS"><option value="ASA"><option value="TPU"></datalist>
+    <div class="field"><label for="f-marca">Marca</label><div class="inp"><input id="f-marca" class="txt" autocomplete="off" placeholder="Escolha abaixo ou digite outra" list="lista-fmarca"></div>
+      <div class="chips peq opc" id="f-marca-op"></div></div>
+    <div class="field"><label for="f-tipo">Tipo</label><div class="inp"><input id="f-tipo" class="txt" autocomplete="off" placeholder="Escolha abaixo ou digite outro" list="lista-ftipo"></div>
+      <div class="chips peq opc" id="f-tipo-op"></div></div>
+    <datalist id="lista-fmarca"></datalist><datalist id="lista-ftipo"></datalist><datalist id="lista-fcor"></datalist>
     <div class="field"><label for="f-cor">Cor</label>
-      <div class="colrow"><input type="color" id="f-hex" value="#2a7fd4" aria-label="Escolher cor"><div class="inp"><input id="f-cor" class="txt" autocomplete="off" placeholder="Ex.: Azul royal"></div></div></div>
+      <div class="colrow"><input type="color" id="f-hex" value="#2a7fd4" aria-label="Escolher cor"><div class="inp"><input id="f-cor" class="txt" autocomplete="off" placeholder="Escolha abaixo ou digite outra" list="lista-fcor"></div></div>
+      <div class="chips peq opc" id="f-cor-op"></div></div>
     <div class="row2">
       <div class="field"><label for="f-peso">Peso no carretel</label><div class="inp"><input id="f-peso" inputmode="decimal" value="1000"><span class="u">g</span></div></div>
       <div class="field"><label for="f-valor">Valor do carretel</label><div class="inp"><span class="pre">R$</span><input id="f-valor" inputmode="decimal"></div></div>
@@ -1688,7 +1691,45 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     $("f-min").value = numN.format(minimo(f || {}));
     $("f-qtd-hint").textContent = f ? "Estoque atual em carretéis. Mudar aqui corrige o peso em estoque." : "Pode usar fração para carretel aberto (ex.: 1,5).";
     $("f-erro").textContent = "";
+    montarOpcFil();
     abrirSheet("sh-fil");
+  }
+  // Listas para escolher marca, tipo e cor: as de sempre + as que já estão no estoque (mais usadas primeiro)
+  var OPC_FIL = {
+    marca: ["Bambu Lab", "Voolt3D", "3D Lab", "GTMax3D", "Sunlu", "eSun", "Creality", "Polymaker"],
+    tipo: ["PLA", "PLA Lite", "PLA Matte", "PLA Silk", "PETG", "ABS", "ASA", "TPU"],
+    cor: ["Branco", "Preto", "Cinza", "Cinza escuro", "Vermelho", "Laranja", "Amarelo", "Verde", "Azul", "Rosa", "Roxo", "Marrom"]
+  };
+  var HEX_COR = { "branco": "#f4f4f2", "preto": "#1c1c1c", "cinza": "#9a9a9a", "cinza escuro": "#4a4a4a", "vermelho": "#d42a2a", "laranja": "#f07a1a",
+    "amarelo": "#f4c81c", "verde": "#2a9d4a", "azul": "#2a7fd4", "rosa": "#f07ab0", "roxo": "#7a3fc0", "marrom": "#7a4a2a" };
+  function opcoesFil(campo) {
+    var conta = {}, nomes = {};
+    listaFil().forEach(function (f) { var v = (f[campo] || "").trim(); if (!v) return; var k = normTxt(v); conta[k] = (conta[k] || 0) + 1; if (!nomes[k]) nomes[k] = v; });
+    var usados = Object.keys(conta).sort(function (a, b) { return conta[b] - conta[a]; }).map(function (k) { return nomes[k]; });
+    var lista = usados.slice();
+    OPC_FIL[campo].forEach(function (v) { if (!conta[normTxt(v)]) lista.push(v); });
+    return lista;
+  }
+  function hexDaCor(nome) {
+    var k = normTxt(nome), achou = listaFil().filter(function (f) { return f.hex && normTxt(f.cor || "") === k; })[0];
+    return achou ? achou.hex : HEX_COR[k] || null;
+  }
+  function montarOpcFil() {
+    [["marca", "f-marca", "lista-fmarca"], ["tipo", "f-tipo", "lista-ftipo"], ["cor", "f-cor", "lista-fcor"]].forEach(function (c) {
+      var lista = opcoesFil(c[0]), inp = $(c[1]), box = $(c[1] + "-op"), dl = $(c[2]);
+      dl.textContent = ""; lista.forEach(function (v) { dl.appendChild(el("option", { value: v })); });
+      function pintar() {
+        box.textContent = "";
+        lista.forEach(function (v) {
+          var hx = c[0] === "cor" ? hexDaCor(v) : null;
+          box.appendChild(el("button", { type: "button", "aria-pressed": normTxt(inp.value) === normTxt(v) ? "true" : "false", onclick: function () {
+            inp.value = v; if (hx) $("f-hex").value = hx; pintar();
+          } }, [hx ? el("span", { class: "bol", style: "background:" + hx }) : null, document.createTextNode(v)]));
+        });
+      }
+      inp.oninput = function () { if (c[0] === "cor") { var hx = hexDaCor(inp.value); if (hx) $("f-hex").value = hx; } pintar(); };
+      pintar();
+    });
   }
   $("novo-fil").addEventListener("click", function () { abrirFormFil(null); });
   $("f-cancelar").addEventListener("click", function () { fecharSheet("sh-fil"); });
