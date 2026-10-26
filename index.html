@@ -1406,17 +1406,53 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
   /* ---------- Planilha do Google (versão sem login): todos os aparelhos veem os mesmos dados ---------- */
   var PLANILHA = "https://script.google.com/macros/s/AKfycbxkGTwqvaB7Z2Zm7jI7CkQSM2i5O37DnLxiPz2m9Ap3uS76usczD4fIh9xkV9B2j9tW/exec";
-  var pendentes = 0;
+  // Fila de envio: o que não salvou fica guardado no aparelho e o app tenta de novo sozinho
+  var pendentes = 0, filaEnvio = [], motivoEnvio = "", falhouEnvio = false, avisoEnvio = 0, timerEnvio = null;
+  try { filaEnvio = JSON.parse(localStorage.getItem("baksa3d.filaEnvio") || "[]") || []; } catch (e) {}
+  function salvarFilaEnvio() { try { localStorage.setItem("baksa3d.filaEnvio", JSON.stringify(filaEnvio)); } catch (e) {} }
   function enviarPlanilha(corpo) {
-    pendentes++;
-    return fetch(PLANILHA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(corpo) })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { if (!j || !j.ok) throw new Error("falhou"); })
-      .catch(function () { toast("Não foi possível salvar na planilha. Verifique a internet."); })
-      .then(function () { pendentes--; });
+    filaEnvio = filaEnvio.filter(function (x) { return !(x.col === corpo.col && x.id === corpo.id); });
+    filaEnvio.push(corpo); salvarFilaEnvio();
+    return descarregarFila();
   }
+  // Motivo legível: a mensagem do Google (título da página de erro) ou falta de internet
+  function motivoDe(texto) {
+    var t = String(texto || ""), m = t.match(/<title>([^<]*)<\/title>/i);
+    return (m ? m[1] : t.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim().slice(0, 90);
+  }
+  function descarregarFila() {
+    if (pendentes || !filaEnvio.length) return Promise.resolve();
+    pendentes++;
+    var corpo = filaEnvio[0];
+    return fetch(PLANILHA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(corpo) })
+      .then(function (r) { return r.text(); }, function () { throw { motivo: navigator.onLine === false ? "sem internet" : "sem resposta da planilha" }; })
+      .then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (e) {}
+        if (!j || !j.ok) throw { motivo: j && j.erro ? j.erro : motivoDe(t) || "resposta estranha da planilha" };
+        filaEnvio = filaEnvio.filter(function (x) { return x !== corpo; }); salvarFilaEnvio();
+        pendentes--;
+        if (filaEnvio.length) return descarregarFila();
+        if (falhouEnvio) { falhouEnvio = false; motivoEnvio = ""; toast("Pronto: tudo salvo na planilha."); if (pronto) renderSugestoes(); }
+      })
+      .catch(function (e) {
+        pendentes--;
+        motivoEnvio = e && e.motivo || "erro desconhecido"; falhouEnvio = true;
+        if (Date.now() - avisoEnvio > 60000) { avisoEnvio = Date.now(); toast("Não salvou na planilha agora (" + motivoEnvio + "). Ficou guardado neste aparelho e o app tenta de novo sozinho."); }
+        clearTimeout(timerEnvio); timerEnvio = setTimeout(descarregarFila, 30000);
+        if (pronto) renderSugestoes();
+      });
+  }
+  // O que ainda está na fila vale mais que a planilha (senão some ao atualizar)
+  function aplicarFila(c, o) {
+    filaEnvio.forEach(function (x) {
+      if (x.col !== c) return;
+      if (x.op === "apagar") delete o[x.id]; else o[x.id] = Object.assign({ id: x.id }, x.dados);
+    });
+  }
+  window.addEventListener("online", function () { descarregarFila(); });
   function puxarPlanilha(primeira) {
     if (pendentes) return;
+    descarregarFila();
     fetch(PLANILHA + "?cols=" + COLS.join(","), { cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (j) {
@@ -1431,6 +1467,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
             });
             return;
           }
+          aplicarFila(c, o);
           cache[c] = o; lsSet(c);
         });
         renderTudo();
@@ -3370,6 +3407,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function sugestoes() {
     var L = [];
     function add(o) { L.push(o); }
+    if (filaEnvio.length) {
+      add({ g: "facil", tmp: "10 s", urg: true, valor: 2e6, txt: (filaEnvio.length === 1 ? "1 alteração está" : filaEnvio.length + " alterações estão") + " guardada" + (filaEnvio.length === 1 ? "" : "s") + " só neste aparelho, esperando para salvar na planilha.",
+        sub: motivoEnvio ? "Último motivo: " + motivoEnvio + ". O app tenta de novo sozinho." : "O app tenta de novo sozinho.", btn: "Tentar agora", acao: function () { clearTimeout(timerEnvio); descarregarFila(); toast("Tentando salvar…"); } });
+    }
     ORDEM_IMPS.forEach(function (i) {
       var ag = agenda(i), N = IMPS[i].nome;
       ag.prod.forEach(function (it) {
