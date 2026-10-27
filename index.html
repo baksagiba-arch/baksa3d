@@ -3760,7 +3760,25 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   $("cl-msg").addEventListener("input", function () { if (cliTag) cliMsg[cliTag] = this.value; });
   function renderClientes() {
     var todos = clientes(), busca = normTxt($("cl-busca").value), box = $("cl-lista"); box.textContent = "";
-    [].forEach.call($("cl-linha-seg").children, function (b) { b.setAttribute("aria-pressed", b.dataset.l === cliLinha); });
+    // Exclui o cliente: o cadastro e, se houver, os pedidos e cotações dele (o estoque não muda)
+  function excluirCli(c) {
+    var peds = c.regs.filter(function (r) { return r.tipo === "ped"; }), cots = c.regs.filter(function (r) { return r.tipo === "cot"; });
+    function tudo() {
+      var ps = [];
+      if (c.cad) ps.push(apagar("clientes", c.cad.id));
+      c.regs.forEach(function (r) { ps.push(apagar(r.tipo === "ped" ? "pedidos" : "cotacoes", r.x.id)); });
+      cliAberto = null;
+      Promise.all(ps).then(function () { renderClientes(); toast("Cliente excluído."); });
+    }
+    var partes = [];
+    if (peds.length) partes.push(peds.length + (peds.length === 1 ? " pedido" : " pedidos"));
+    if (cots.length) partes.push(cots.length + (cots.length === 1 ? " cotação" : " cotações"));
+    confirmar("Excluir " + c.nome + "?", partes.length
+      ? "Este cliente tem " + partes.join(" e ") + ". Tudo isso sai junto com o cadastro, inclusive das vendas. O estoque de filamento não muda. Não dá para desfazer."
+      : "O cadastro sai da lista de clientes. Não dá para desfazer.",
+      [{ texto: partes.length ? "Excluir cliente e " + partes.join(" e ") : "Excluir cliente", classe: "danger", acao: tudo }]);
+  }
+  [].forEach.call($("cl-linha-seg").children, function (b) { b.setAttribute("aria-pressed", b.dataset.l === cliLinha); });
     var daLinha = todos.filter(function (c) { return !cliLinha || c.linha === cliLinha; });
     // filtro por interesse: só mostra as etiquetas que algum cliente tem
     var fb = $("cl-filtro"); fb.textContent = "";
@@ -3854,6 +3872,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           el("button", { type: "button", text: "Cadastro", onclick: function () { abrirCad(c); } }),
           el("button", { type: "button", class: "go", text: "Novo orçamento", onclick: function () { novoOrcCliente(c); } })
         ]));
+        kids.push(el("div", { class: "acts sec" }, [el("button", { type: "button", text: "Excluir cliente", style: "color:var(--warn)", onclick: function () { excluirCli(c); } })]));
       }
       box.appendChild(el("div", { class: "item" }, kids));
     });
