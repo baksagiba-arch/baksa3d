@@ -67,6 +67,7 @@ h2 { font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-sp
 .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 3px; }
 .seg button { border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: 500 14px var(--f-body); padding: 8px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+#imp-seg { grid-template-columns: repeat(3, 1fr); }
 button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .lines { display: grid; gap: 0; font-variant-numeric: tabular-nums; }
@@ -471,8 +472,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="field">
       <span class="lbl" id="lbl-imp">Impressora (a mesma escolhida no fatiador)</span>
       <div class="seg" role="group" aria-labelledby="lbl-imp" id="imp-seg">
-        <button type="button" data-imp="p1s" aria-pressed="true">Bambu P1S</button>
-        <button type="button" data-imp="a1m" aria-pressed="false">Bambu A1 Mini</button>
+        <button type="button" data-imp="p1s" aria-pressed="true">P1S</button>
+        <button type="button" data-imp="a1m" aria-pressed="false">A1 Mini</button>
+        <button type="button" data-imp="a1" aria-pressed="false">A1</button>
       </div>
       <p class="hint" id="imp-fila"></p>
     </div>
@@ -606,7 +608,13 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           <div class="field"><label for="deprec2">Depreciação A1 Mini</label>
             <div class="inp"><span class="pre">R$</span><input id="deprec2" inputmode="decimal"><span class="u">/h</span></div></div>
         </div>
-        <p class="hint">Depreciação + manutenção por hora de impressão. A da A1 Mini segue a proporção do preço pago (R$ 3.640 contra R$ 10.900 da P1S).</p>
+        <div class="row2">
+          <div class="field"><label for="potencia3">Potência da A1</label>
+            <div class="inp"><input id="potencia3" inputmode="decimal"><span class="u">kW</span></div></div>
+          <div class="field"><label for="deprec3">Depreciação A1</label>
+            <div class="inp"><span class="pre">R$</span><input id="deprec3" inputmode="decimal"><span class="u">/h</span></div></div>
+        </div>
+        <p class="hint">Depreciação + manutenção por hora de impressão. A da A1 Mini e a da A1 seguem a proporção do preço (R$ 3.640 e uns R$ 5.500 com AMS Lite, contra R$ 10.900 da P1S).</p>
         <div class="row2">
           <div class="field"><label for="kwh">Custo do kWh</label>
             <div class="inp"><span class="pre">R$</span><input id="kwh" inputmode="decimal"></div></div>
@@ -847,7 +855,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <h3 id="pr-titulo">Peça própria na fila</h3>
     <p class="hint">Peças decorativas da casa. Ficam no fim da fila e não contam no prazo dos clientes.</p>
     <div class="field"><label for="pr-nome">Nome da peça</label><div class="inp"><input id="pr-nome" class="txt" autocomplete="off" placeholder="Ex.: Vaso espiral"></div></div>
-    <div class="field"><label for="pr-imp">Impressora</label><div class="selwrap"><select id="pr-imp"><option value="p1s">Bambu P1S</option><option value="a1m">Bambu A1 Mini</option></select></div></div>
+    <div class="field"><label for="pr-imp">Impressora</label><div class="selwrap"><select id="pr-imp"><option value="p1s">Bambu P1S</option><option value="a1m">Bambu A1 Mini</option><option value="a1">Bambu A1</option></select></div></div>
     <div class="row2">
       <div class="field"><label for="pr-h">Tempo total</label><div class="inp"><input id="pr-h" inputmode="numeric"><span class="u">h</span></div></div>
       <div class="field"><label for="pr-m">&nbsp;</label><div class="inp"><input id="pr-m" inputmode="numeric" aria-label="Minutos"><span class="u">min</span></div></div>
@@ -1049,10 +1057,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 
 <script>
 (function () {
-  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, potencia2: 0.2, deprec2: 0.25, horasDia: 16, margem: 5, impostos: 15, margemMin: 2 };
-  // As duas impressoras: cada uma com sua potência e depreciação. A A1 Mini é uns 12% mais lenta que a P1S.
-  var IMPS = { p1s: { nome: "P1S", pot: "potencia", dep: "deprec", vel: 1 }, a1m: { nome: "A1 Mini", pot: "potencia2", dep: "deprec2", vel: 1.12 } };
-  var ORDEM_IMPS = ["p1s", "a1m"];
+  var PADRAO = { potencia: 0.2, kwh: 0.9, deprec: 0.75, potencia2: 0.2, deprec2: 0.25, potencia3: 0.2, deprec3: 0.38, horasDia: 16, margem: 5, impostos: 15, margemMin: 2 };
+  // As impressoras: cada uma com sua potência e depreciação. A A1 Mini e a A1 (da filha do Giba) são uns 12% mais lentas que a P1S.
+  var IMPS = { p1s: { nome: "P1S", pot: "potencia", dep: "deprec", vel: 1 }, a1m: { nome: "A1 Mini", pot: "potencia2", dep: "deprec2", vel: 1.12 },
+    a1: { nome: "A1", pot: "potencia3", dep: "deprec3", vel: 1.12 } };
+  var ORDEM_IMPS = ["p1s", "a1m", "a1"];
   var imp = "p1s";
   function impDe(x) { return IMPS[x && x.impressora] ? x.impressora : "p1s"; }
   var DESP_PADRAO = 30;
@@ -1121,7 +1130,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   function ehData(t) { return DATAS.some(function (x) { return x[0] === t; }); }
   function lerTags(v) { return Array.isArray(v) ? v : String(v || "").split("|").filter(Boolean); }
   var PECA = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "pc-tags", "qtd", "horas", "minutos", "decimal", "peso", "embalagem", "frete"];
-  var campos = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "potencia2", "deprec2", "horasDia", "margem", "impostos", "margemMin"];
+  var campos = ["cli-nome", "cli-emp", "cli-linha", "cli-tel", "cli-email", "cli-whats", "cli-resumo", "nome", "qtd", "horas", "minutos", "decimal", "peso", "filamento", "embalagem", "frete", "potencia", "kwh", "deprec", "potencia2", "deprec2", "potencia3", "deprec3", "horasDia", "margem", "impostos", "margemMin"];
 
   function carregar() {
     var s = null;
@@ -2088,16 +2097,16 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     ]);
   }
   function trocarImp(it) {
-    var de = impDe(it.x), para = de === "p1s" ? "a1m" : "p1s";
-    var h = Math.round(it.h * IMPS[para].vel / IMPS[de].vel * 100) / 100;
-    var col = it.tipo === "ped" ? "pedidos" : "fila";
-    confirmar("Mudar para a " + IMPS[para].nome + "?", nomeItem(it) + ". O tempo passa de " + hm(it.h) + " para " + hm(h) + " (a A1 Mini é uns 12% mais lenta)." + (para === "a1m" ? " Confira se a peça cabe na mesa de 18 cm." : ""), [
-      { texto: "Mudar de impressora", classe: "primary", acao: function () {
+    var de = impDe(it.x), col = it.tipo === "ped" ? "pedidos" : "fila";
+    var bts = ORDEM_IMPS.filter(function (i) { return i !== de; }).map(function (para) {
+      var h = Math.round(it.h * IMPS[para].vel / IMPS[de].vel * 100) / 100;
+      return { texto: IMPS[para].nome + " (" + hm(h) + ")", classe: "primary", acao: function () {
         var d = { impressora: para }; d[col === "pedidos" ? "tempoTotal" : "horas"] = h;
         var novo = Object.assign({}, it.x, d); delete novo.filaPos;
         gravar(col, it.x.id, novo).then(function () { toast("Agora na fila da " + IMPS[para].nome + "."); });
-      } }
-    ]);
+      } };
+    });
+    confirmar("Mudar de impressora?", nomeItem(it) + ". Hoje leva " + hm(it.h) + " na " + IMPS[de].nome + ". A A1 Mini e a A1 são uns 12% mais lentas que a P1S. Na A1 Mini, confira se a peça cabe na mesa de 18 cm.", bts);
   }
   function statusFila(it, st) {
     if (it.tipo === "ped") { mudarStatus(it.x, st === "feito" ? "pronto" : st); return; }
@@ -2110,7 +2119,6 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     var info = (ped ? p.nome + " × " + p.qtd + " · " : "") + (imprimindo ? "imprimindo, falta " + hm(it.resto) : hm(it.h)) + " · pronto " + diaBR(it.fim);
     var pz = ped ? textoPrazo(p) : "";
     var aviso = it.atraso ? "Atrasa " + it.atraso + (it.atraso === 1 ? " dia" : " dias") + (it.atraso24 ? ". Mesmo virando a madrugada atrasa " + it.atraso24 + (it.atraso24 === 1 ? " dia" : " dias") + "." : ". Virando a madrugada fica pronto " + diaBR(it.fim24) + " e dá no prazo.") : "";
-    var outra = impDe(p) === "p1s" ? "A1 Mini" : "P1S";
     return el("div", { class: "hj" + (imprimindo ? " ativo" : "") }, [
       el("div", null, [
         el("b", { text: (imprimindo ? "▶ " : n + ". ") + titulo }),
@@ -2123,7 +2131,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           !imprimindo && lista.indexOf(it) < lista.length - 1 ? el("button", { type: "button", "aria-label": "Passar para trás", text: "↓", onclick: function () { moverFila(it, lista, 1); } }) : null,
           el("button", { type: "button", class: "go", text: imprimindo ? "Terminou" : "Começar", onclick: function () { statusFila(it, imprimindo ? "feito" : "produzindo"); } }),
           imprimindo ? el("button", { type: "button", class: "del", text: "Falhou", onclick: function () { abrirFalha(it); } }) : null,
-          el("button", { type: "button", text: "→ " + outra, onclick: function () { trocarImp(it); } })
+          el("button", { type: "button", text: "Trocar impressora", onclick: function () { trocarImp(it); } })
         ])
       ])
     ]);
