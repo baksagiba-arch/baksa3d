@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-title" content="Baksa.3d"><style>[hidden]{display:none!important}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style></head><body>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-title" content="Baksa.3d"><style>[hidden]{display:none!important}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style></head><body>
 <title>Baksa.3d Custo de Peça</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#1d1916">
@@ -328,7 +328,69 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .bar .side b { color: var(--bar-ink); font-family: var(--f-num); font-weight: 500; }
 footer { color: var(--muted); font-size: 12px; text-align: center; }
 @media (prefers-reduced-motion: no-preference) { .bar .big { transition: color .2s; } }
+
+/* ===== Tela travada: sem zoom sem querer (pinça, duplo toque, foco em campo) ===== */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { overflow-x: clip; }
+button, a, summary, label, input, select, textarea, .seg, .chips, .tabs, .nav-baixo, .item, section { touch-action: manipulation; }
+/* iPhone/iPad dão zoom ao tocar num campo com letra menor que 16px */
+.selwrap select, select, textarea { font-size: 16px; }
+
+/* ===== iPad (e telas a partir de 700px): aproveita a largura ===== */
+@media (min-width: 700px) {
+  .wrap { max-width: 1040px; gap: 20px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); }
+  .bar .in, .nav-baixo .in { max-width: 1040px; }
+  .bar { padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); }
+  header { padding-top: 26px; }
+  .tabs button { font-size: 15.5px; padding: 12px 4px; }
+  .nav-baixo button { font-size: 13px; }
+  .nav-baixo button i { font-size: 22px; }
+  /* listas em cartões lado a lado, duas colunas */
+  .lista { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; }
+  .lista > :not(.item) { grid-column: 1 / -1; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .hj-g { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+  .hj-g > :not(.hj) { grid-column: 1 / -1; }
+  /* Custo: cliente e peça à esquerda, composição do custo à direita */
+  #tab-custo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  #tab-custo > section:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  #tab-custo > section:nth-of-type(2) { grid-column: 1; grid-row: 2 / span 2; }
+  #tab-custo > section:nth-of-type(3) { grid-column: 2; grid-row: 1 / span 2; }
+  #tab-custo > section:nth-of-type(4) { grid-column: 2; grid-row: 3; }
+  #tab-custo > :not(section) { grid-column: 1 / -1; }
+  /* Resumo: quadros em duas colunas, gráfico na largura toda */
+  #tab-vendas { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  #tab-vendas > :not(section), #tab-vendas > section[aria-labelledby="h-graf"] { grid-column: 1 / -1; }
+  .graf { height: 200px; }
+  /* janelas (venda, cliente, demonstrativo) no meio da tela */
+  .sheet { align-items: center; }
+  .sheet .card { max-width: 600px; }
+}
+
+/* ===== iPad deitado: botões das etapas viram uma coluna à esquerda ===== */
+@media (min-width: 1000px) and (orientation: landscape) {
+  :root { --rail: 96px; }
+  body { padding-left: var(--rail); }
+  .nav-baixo { top: 0; right: auto; width: var(--rail); border-top: 0; border-right: 1px solid var(--line); padding: calc(84px + env(safe-area-inset-top, 0px)) 6px calc(12px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px)); }
+  .nav-baixo .in { grid-template-columns: 1fr; gap: 10px; }
+  .nav-baixo button { padding: 12px 2px; border-radius: 12px; font-size: 13px; }
+  .nav-baixo button[aria-current="true"] { background: var(--accent-soft); }
+  .nav-baixo button i { font-size: 24px; line-height: 30px; }
+  .bar { left: var(--rail); bottom: 0; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .wrap { padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+  .toast { left: calc(50% + var(--rail) / 2); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+}
 </style>
+<script>
+// Trava o zoom de pinça (iPhone/iPad ignoram o "user-scalable=no" no Safari)
+(function () {
+  function bloq(e) { e.preventDefault(); }
+  document.addEventListener("gesturestart", bloq, { passive: false });
+  document.addEventListener("gesturechange", bloq, { passive: false });
+  document.addEventListener("touchmove", function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+})();
+</script>
+
 
 <div class="wrap">
   <header>
